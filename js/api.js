@@ -3,7 +3,7 @@
  * Base URL: http://localhost:8000/api/v1
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = (window.IT_SEOBISEU_API_URL || 'http://localhost:8000') + '/api/v1';
 
 // Token Management Keys
 const TOKEN_KEY = 'it_seobiseu_token';

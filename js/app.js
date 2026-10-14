@@ -324,6 +324,7 @@ function initFormValidations() {
   const forms = document.querySelectorAll('form[data-validate="true"]');
 
   forms.forEach(form => {
+    if (form.hasAttribute('data-auth-form')) return;
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       
