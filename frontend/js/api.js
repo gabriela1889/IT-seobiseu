@@ -68,31 +68,68 @@ async function request(endpoint, options = {}) {
   }
 }
 
+export const DEMO_ACCOUNTS = {
+  'admin@it-seobiseu.local': {
+    password: 'Admin123!',
+    user: { id: 1, nombre: 'Carlos Mendoza', email: 'admin@it-seobiseu.local', rol: 'ADMINISTRADOR', cargo: 'SuperAdmin IT', sede: 'Sede Central - Datacenter #1' }
+  },
+  'supervisor@it-seobiseu.local': {
+    password: 'Supervisor123!',
+    user: { id: 2, nombre: 'Ing. Sofía Reyes', email: 'supervisor@it-seobiseu.local', rol: 'SUPERVISOR', cargo: 'Líder Operaciones IT', sede: 'NOC / SOC Principal' }
+  },
+  'tecnico@it-seobiseu.local': {
+    password: 'Tecnico123!',
+    user: { id: 3, nombre: 'Téc. Marco Silva', email: 'tecnico@it-seobiseu.local', rol: 'TECNICO', cargo: 'Especialista Hardware & Servidores', sede: 'Taller de Infraestructura' }
+  },
+  'cliente@it-seobiseu.local': {
+    password: 'Cliente123!',
+    user: { id: 4, nombre: 'Dra. Elena Vasquez', email: 'cliente@it-seobiseu.local', rol: 'CLIENTE', cargo: 'Gerente IT Banco Santander', sede: 'Torre Financiera Piso 14' }
+  }
+};
+
 /* ==========================================================================
    1. AUTHENTICATION SERVICE
    ========================================================================== */
 export const AuthService = {
   /**
    * Login user and store JWT token in localStorage
-   * @param {string} email 
-   * @param {string} password 
-   * @returns {Promise<Object>} Token and user info
+   * Supports live FastAPI backend and instant local demo fallback
    */
   async login(email, password) {
-    // FastAPI OAuth2PasswordBearer or JSON authentication
-    const data = await request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    const cleanEmail = (email || '').trim().toLowerCase();
+    
+    try {
+      const data = await request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
 
-    if (data.access_token || data.token) {
-      const token = data.access_token || data.token;
-      localStorage.setItem(TOKEN_KEY, token);
-      if (data.user) {
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      if (data.access_token || data.token) {
+        const token = data.access_token || data.token;
+        localStorage.setItem(TOKEN_KEY, token);
+        if (data.user) {
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        }
+        return data;
       }
+    } catch (apiError) {
+      console.warn('[IT seobiseu] Backend remoto no disponible o con error, validando cuentas demo:', apiError.message);
+      
+      const demoAccount = DEMO_ACCOUNTS[cleanEmail];
+      if (demoAccount && demoAccount.password === password) {
+        const mockToken = demo_session__;
+        localStorage.setItem(TOKEN_KEY, mockToken);
+        localStorage.setItem(USER_KEY, JSON.stringify(demoAccount.user));
+        return {
+          access_token: mockToken,
+          token_type: 'bearer',
+          user: demoAccount.user,
+          is_demo: true
+        };
+      }
+      
+      throw new Error(apiError.message.includes('HTTP') ? apiError.message : 'Credenciales inválidas. Verifique correo y contraseña.');
     }
-    return data;
   },
 
   /**

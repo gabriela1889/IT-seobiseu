@@ -77,6 +77,39 @@
       </div>
 
       <!-- Form con validación dinámica y spinner en botón -->
+            <!-- Selector de Roles Demo -->
+      <div class="mb-5 p-3 rounded-xl bg-[#0B132B]/70 border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] font-mono text-brand-cyan uppercase tracking-wider font-semibold">Roles Demo para Pruebas:</span>
+          <span class="text-[9px] font-mono text-slate-500">Click para autocompletar</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button type="button" data-role-demo="admin" class="btn-role-demo text-left px-2 py-1.5 rounded-lg bg-slate-800/80 hover:bg-sky-500/20 border border-slate-700/60 hover:border-brand-cyan/60 transition-all group">
+            <div class="text-[11px] font-semibold text-slate-200 group-hover:text-brand-cyan flex items-center gap-1">
+              <span>👑</span> <span>Admin</span>
+            </div>
+            <div class="text-[9px] font-mono text-slate-400 truncate">admin@it-seobiseu.local</div>
+          </button>
+          <button type="button" data-role-demo="supervisor" class="btn-role-demo text-left px-2 py-1.5 rounded-lg bg-slate-800/80 hover:bg-sky-500/20 border border-slate-700/60 hover:border-brand-cyan/60 transition-all group">
+            <div class="text-[11px] font-semibold text-slate-200 group-hover:text-brand-cyan flex items-center gap-1">
+              <span>🛡️</span> <span>Supervisor</span>
+            </div>
+            <div class="text-[9px] font-mono text-slate-400 truncate">supervisor@it-seobiseu.local</div>
+          </button>
+          <button type="button" data-role-demo="tecnico" class="btn-role-demo text-left px-2 py-1.5 rounded-lg bg-slate-800/80 hover:bg-sky-500/20 border border-slate-700/60 hover:border-brand-cyan/60 transition-all group">
+            <div class="text-[11px] font-semibold text-slate-200 group-hover:text-brand-cyan flex items-center gap-1">
+              <span>🔧</span> <span>Técnico</span>
+            </div>
+            <div class="text-[9px] font-mono text-slate-400 truncate">tecnico@it-seobiseu.local</div>
+          </button>
+          <button type="button" data-role-demo="cliente" class="btn-role-demo text-left px-2 py-1.5 rounded-lg bg-slate-800/80 hover:bg-sky-500/20 border border-slate-700/60 hover:border-brand-cyan/60 transition-all group">
+            <div class="text-[11px] font-semibold text-slate-200 group-hover:text-brand-cyan flex items-center gap-1">
+              <span>👤</span> <span>Cliente VIP</span>
+            </div>
+            <div class="text-[9px] font-mono text-slate-400 truncate">cliente@it-seobiseu.local</div>
+          </button>
+        </div>
+      </div>
       <form data-auth-form class="space-y-3.5">
         <div>
           <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Correo Corporativo *</label>
