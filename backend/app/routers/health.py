@@ -9,7 +9,18 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
+    settings = get_settings()
+    if settings.use_supabase:
+        db_status = "supabase"
+    elif settings.use_sqlite:
+        db_status = "sqlite"
+    elif pool is not None:
+        db_status = "configured"
+    else:
+        db_status = "not_configured"
+
     return HealthResponse(
         status="ok",
-        database="sqlite" if get_settings().use_sqlite else ("configured" if pool is not None else "not_configured"),
+        database=db_status,
     )
+

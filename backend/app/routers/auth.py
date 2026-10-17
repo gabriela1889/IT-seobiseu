@@ -15,7 +15,7 @@ def login(payload: LoginRequest, connection=Depends(get_connection)):
         """
         SELECT u.id, u.nombre, u.correo, u.password_hash, r.nombre AS rol
         FROM usuarios u JOIN roles r ON r.id = u.rol_id
-        WHERE lower(u.correo) = lower(?) AND u.activo = 1
+        WHERE lower(u.correo) = lower(?) AND u.activo = TRUE
         """,
         (payload.email,),
     ).fetchone()

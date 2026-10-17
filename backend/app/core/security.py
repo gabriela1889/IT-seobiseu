@@ -38,7 +38,7 @@ def get_current_user(
         """
         SELECT u.id, u.nombre, u.correo, r.nombre AS rol
         FROM usuarios u JOIN roles r ON r.id = u.rol_id
-        WHERE u.id = ? AND u.activo = 1
+        WHERE u.id = ? AND u.activo = TRUE
         """,
         (user_id,),
     ).fetchone()

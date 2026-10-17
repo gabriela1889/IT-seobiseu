@@ -72,7 +72,7 @@ def list_inventory(
     connection=Depends(get_connection),
     _=Depends(require_roles("ADMINISTRADOR", "SUPERVISOR", "TECNICO")),
 ):
-    return [dict(row) for row in connection.execute("SELECT * FROM inventario WHERE activo = 1 ORDER BY nombre").fetchall()]
+    return [dict(row) for row in connection.execute("SELECT * FROM inventario WHERE activo = TRUE ORDER BY nombre").fetchall()]
 
 
 @router.post("/inventario", response_model=InventoryResponse, status_code=status.HTTP_201_CREATED)
@@ -87,7 +87,7 @@ def create_inventory(
         tuple(payload.model_dump().values()),
     )
     connection.commit()
-    return {"id": cursor.lastrowid, "activo": 1, **payload.model_dump()}
+    return {"id": cursor.lastrowid, "activo": True, **payload.model_dump()}
 
 
 @router.get("/ordenes", response_model=list[OrderResponse])
@@ -120,7 +120,7 @@ def dashboard(
     queries = {
         "tickets_abiertos": "SELECT COUNT(*) FROM tickets WHERE estado NOT IN ('CERRADO', 'RESUELTO')",
         "ordenes_activas": "SELECT COUNT(*) FROM ordenes_trabajo WHERE estado NOT IN ('COMPLETADA', 'CANCELADA')",
-        "stock_critico": "SELECT COUNT(*) FROM inventario WHERE activo = 1 AND stock <= stock_minimo",
+        "stock_critico": "SELECT COUNT(*) FROM inventario WHERE activo = TRUE AND stock <= stock_minimo",
         "clientes_activos": "SELECT COUNT(*) FROM clientes WHERE estado = 'ACTIVO'",
     }
     return {key: connection.execute(query).fetchone()[0] for key, query in queries.items()}

@@ -10,20 +10,16 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_prefix: str = "/api/v1"
     frontend_origins: str = "http://localhost:5500,http://127.0.0.1:5500"
-    oracle_user: str = ""
-    oracle_password: str = ""
-    oracle_dsn: str = ""
-    oracle_wallet_dir: str = ""
-    database_mode: str = "sqlite"
-    sqlite_path: str = "it_seobiseu.db"
-    seed_admin_email: str = "admin@it-seobiseu.local"
-    seed_admin_password: str = "Admin123!"
+    supabase_url: str = "https://shtpanowiryhadccuhty.supabase.co"
+    supabase_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNodHBhbm93aXJ5aGFkY2N1aHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyMTU1MzcsImV4cCI6MjEwNzc5MTUzN30.fvfUNYbRWllRymledB6PCySncBjFfnxXprlvdjp4ww4"
+    supabase_db_url: str = "postgresql+pg8000://postgres.shtpanowiryhadccuhty:ItSeobiseu2026!Db@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+    database_mode: str = "supabase"
     jwt_secret_key: str = Field(default=development_jwt_secret, min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -32,10 +28,8 @@ class Settings(BaseSettings):
     def validate_production_settings(self) -> "Settings":
         if self.app_env.lower() != "production":
             return self
-        if self.use_sqlite:
-            raise ValueError("DATABASE_MODE debe ser oracle en producción.")
-        if not all((self.oracle_user, self.oracle_password, self.oracle_dsn, self.oracle_wallet_dir)):
-            raise ValueError("Oracle y ORACLE_WALLET_DIR son obligatorios en producción.")
+        if not self.supabase_db_url and not (self.supabase_url and self.supabase_key):
+            raise ValueError("SUPABASE_DB_URL o SUPABASE_URL/SUPABASE_KEY son obligatorios en producción.")
         if self.jwt_secret_key == self.development_jwt_secret:
             raise ValueError("JWT_SECRET_KEY debe cambiarse en producción.")
         if not self.origins or any(origin.startswith("http://") for origin in self.origins):
@@ -47,8 +41,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
 
     @property
-    def use_sqlite(self) -> bool:
-        return self.database_mode.lower() == "sqlite"
+    def use_supabase(self) -> bool:
+        return True
 
 
 @lru_cache
