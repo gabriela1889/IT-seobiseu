@@ -71,19 +71,19 @@ async function request(endpoint, options = {}) {
 export const DEMO_ACCOUNTS = {
   'admin@it-seobiseu.local': {
     password: 'Admin123!',
-    user: { id: 1, nombre: 'Carlos Mendoza', email: 'admin@it-seobiseu.local', rol: 'ADMINISTRADOR', cargo: 'SuperAdmin IT', sede: 'Sede Central - Datacenter #1' }
+    user: { id: 1, nombre: 'Carlos Mendoza', email: 'admin@it-seobiseu.local', rol: 'ADMINISTRADOR', cargo: 'SuperAdmin IT', sede: 'Bogotá • Datacenter Zona Franca' }
   },
   'supervisor@it-seobiseu.local': {
     password: 'Supervisor123!',
-    user: { id: 2, nombre: 'Ing. Sofía Reyes', email: 'supervisor@it-seobiseu.local', rol: 'SUPERVISOR', cargo: 'Líder Operaciones IT', sede: 'NOC / SOC Principal' }
+    user: { id: 2, nombre: 'Ing. Sofía Reyes', email: 'supervisor@it-seobiseu.local', rol: 'SUPERVISOR', cargo: 'Líder Operaciones NOC', sede: 'Bogotá • Sede Chicó Calle 100' }
   },
   'tecnico@it-seobiseu.local': {
     password: 'Tecnico123!',
-    user: { id: 3, nombre: 'Téc. Marco Silva', email: 'tecnico@it-seobiseu.local', rol: 'TECNICO', cargo: 'Especialista Hardware & Servidores', sede: 'Taller de Infraestructura' }
+    user: { id: 3, nombre: 'Téc. Marco Silva', email: 'tecnico@it-seobiseu.local', rol: 'TECNICO', cargo: 'Especialista Hardware & Servidores', sede: 'Cundinamarca • Datacenter Tocancipá' }
   },
   'cliente@it-seobiseu.local': {
     password: 'Cliente123!',
-    user: { id: 4, nombre: 'Dra. Elena Vasquez', email: 'cliente@it-seobiseu.local', rol: 'CLIENTE', cargo: 'Gerente IT Banco Santander', sede: 'Torre Financiera Piso 14' }
+    user: { id: 4, nombre: 'Dra. Elena Vásquez', email: 'cliente@it-seobiseu.local', rol: 'CLIENTE', cargo: 'Gerente IT Bancolombia', sede: 'Medellín / Bogotá • Torre Empresarial' }
   }
 };
 
