@@ -23,3 +23,6 @@ Thumbs.db
 
 # Supabase CLI — archivos temporales locales (tokens, refs)
 supabase/.temp/
+
+# Workflows locales (despliegue activo via rama gh-pages)
+.github/
