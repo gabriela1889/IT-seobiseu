@@ -117,7 +117,7 @@ export const AuthService = {
       
       const demoAccount = DEMO_ACCOUNTS[cleanEmail];
       if (demoAccount && demoAccount.password === password) {
-        const mockToken = demo_session__;
+        const mockToken = 'demo_session_' + cleanEmail + '_' + Date.now();
         localStorage.setItem(TOKEN_KEY, mockToken);
         localStorage.setItem(USER_KEY, JSON.stringify(demoAccount.user));
         return {
