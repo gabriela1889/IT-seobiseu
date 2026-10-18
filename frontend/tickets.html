@@ -291,7 +291,118 @@
 
       </div>
 
+      <!-- Active Tickets Section -->
+      <div class="mt-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="font-mono text-[10px] text-brand-cyan uppercase tracking-widest bg-slate-800/80 border border-slate-700/60 px-2 py-0.5 rounded font-semibold">Mesa de Ayuda • Colombia</span>
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            </div>
+            <h2 class="font-display font-bold text-lg text-white">Tickets y Requerimientos Radicados</h2>
+          </div>
+          <span id="ticketsCounterBadge" class="px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-brand-cyan font-mono text-xs font-semibold self-start sm:self-auto">3 tickets activos</span>
+        </div>
+
+        <div class="bg-[#1C2541]/85 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl overflow-hidden relative">
+          <!-- Toolbar -->
+          <div class="p-3.5 border-b border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#0B132B]/85">
+            <div class="relative flex-1 max-w-md">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+              <input id="ticketsFilterSearch" class="w-full bg-[#1C2541]/90 font-sans text-xs text-slate-200 placeholder:text-slate-400 rounded-xl pl-9 pr-4 py-2 border border-slate-700/80 focus:border-brand-cyan/60 focus:outline-none" placeholder="Buscar por código #TK, solicitante, equipo..." type="text"/>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <select id="ticketsStatusSelect" class="bg-[#1C2541]/90 font-sans text-xs text-slate-200 rounded-xl px-3 py-2 border border-slate-700/80 focus:border-brand-cyan/60 focus:outline-none cursor-pointer">
+                <option value="all">Todos los Estados</option>
+                <option value="Abierto">Abierto</option>
+                <option value="En Proceso">En Proceso</option>
+                <option value="Resuelto">Resuelto</option>
+              </select>
+
+              <button id="btnRefreshTickets" class="btn-pro p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition-all" title="Recargar tickets">
+                <span class="material-symbols-outlined text-[16px]">refresh</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="ticketsSkeletonLoader" class="hidden p-5 space-y-3">
+            <div class="h-9 skeleton-shimmer rounded-xl w-full"></div>
+            <div class="h-12 skeleton-shimmer rounded-xl w-full"></div>
+            <div class="h-12 skeleton-shimmer rounded-xl w-full"></div>
+          </div>
+
+          <!-- Real Table Content -->
+          <div id="ticketsTableContent" class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="bg-[#0B132B]/90 text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800/80">
+                  <th class="py-3 px-4 font-semibold">Código Ticket</th>
+                  <th class="py-3 px-4 font-semibold">Solicitante & Contacto</th>
+                  <th class="py-3 px-4 font-semibold">Tipo & Dispositivo</th>
+                  <th class="py-3 px-4 font-semibold">Sede / Ubicación</th>
+                  <th class="py-3 px-4 font-semibold">Prioridad</th>
+                  <th class="py-3 px-4 font-semibold">Estado</th>
+                  <th class="py-3 px-4 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-sans">
+                <!-- Dynamically rendered by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </main>
+  </div>
+
+  <!-- MODAL: EDITAR ESTADO DE TICKET -->
+  <div id="editTicketModal" class="modal-container hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-[#1C2541] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 bg-[#0B132B]/85 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-display font-bold text-sm text-white">Actualizar Ticket IT</h3>
+        <button data-modal-close class="btn-pro w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+
+      <form id="formEditTicket" class="p-5 space-y-3.5">
+        <input type="hidden" id="editTicketId" />
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Código Ticket</label>
+          <input id="editTicketIdDisplay" readonly class="w-full bg-[#0B132B]/90 font-mono text-xs text-brand-cyan rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none font-bold" />
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Estado de Atención *</label>
+          <select id="editTicketStatusSelect" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+            <option value="Abierto">Abierto (En cola de triage)</option>
+            <option value="En Proceso">En Proceso (Técnico asignado en sitio)</option>
+            <option value="Resuelto">Resuelto (SLA Certificado Cumplido)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Prioridad SLA</label>
+          <select id="editTicketPrioritySelect" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+            <option value="p1">P1 - Crítica (2 Horas)</option>
+            <option value="p2">P2 - Alta (4 Horas)</option>
+            <option value="p3">P3 - Media (8 Horas)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Notas de Resolución / Bitácora</label>
+          <textarea id="editTicketNotes" rows="2" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Detalle la solución aplicada o instrucciones para el usuario..."></textarea>
+        </div>
+
+        <div class="pt-2.5 border-t border-slate-800 flex items-center justify-end gap-2.5">
+          <button data-modal-close type="button" class="btn-pro px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
+          <button type="submit" class="btn-primary-gradient px-4 py-2 rounded-xl text-xs font-bold">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="./config.js"></script>

@@ -5,6 +5,7 @@
  */
 
 import { AuthService, DEMO_ACCOUNTS } from './api.js';
+import { Store } from './store.js';
 
 /* ==========================================================================
    0. CONFIGURACIÓN Y CONTROL DE ACCESO POR ROL
@@ -36,9 +37,7 @@ const ROLE_PERMISSIONS = {
   }
 };
 
-let currentActiveDrawerOrder = null;
-let currentActiveEditOrder = null;
-let currentSkuToEdit = null;
+let currentActiveDrawerOrderId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
@@ -83,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     adaptSidebarAndModulesByRole();
   }
 
-  // 5. Inicializar Controladores de Página Específica
+  // 5. Inicializar Controladores de Página Específica con Renderizado Reactivo
   if (currentPage.includes('inventario')) {
     initInventarioModule();
   } else if (currentPage.includes('ordenes')) {
@@ -142,7 +141,7 @@ function initUserHeaderAndDropdown() {
     roleEl.className = `text-[9px] font-mono mt-0.5 font-bold ${perm.colorClass}`;
   }
 
-  // Inyectar o actualizar menú de usuario
+  // Inyectar menú desplegable de usuario
   let userDropdown = document.getElementById('userMenuDropdown');
   if (!userDropdown) {
     userDropdown = document.createElement('div');
@@ -248,7 +247,6 @@ function initUserHeaderAndDropdown() {
         await AuthService.login(email, account.password);
         showToast(`Cambiando a perfil: ${account.user.rol}. Cargando permisos...`, 'success', 'Rol Actualizado');
         setTimeout(() => {
-          // Si es cliente y está en inventario/clientes, enviarlo a tickets
           if (roleKey === 'cliente') {
             window.location.href = 'tickets.html';
           } else {
@@ -268,12 +266,9 @@ function adaptSidebarAndModulesByRole() {
   if (!currentUser) return;
 
   const role = (currentUser.rol || 'ADMINISTRADOR').toUpperCase();
-  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.ADMINISTRADOR;
 
-  // Ocultar / Mostrar enlaces del Sidebar según permisos
   document.querySelectorAll('#mainSidebar nav a[href]').forEach((link) => {
     const href = link.getAttribute('href').toLowerCase();
-    
     const isInventario = href.includes('inventario');
     const isClientes = href.includes('clientes');
     const isAjustes = href.includes('#') || link.textContent.includes('Ajustes');
@@ -281,7 +276,6 @@ function adaptSidebarAndModulesByRole() {
     const isTickets = href.includes('tickets');
 
     if (role === 'CLIENTE') {
-      // Clientes no ven Inventario, ni Directorio de otros clientes, ni Ajustes
       if (isInventario || isClientes || isAjustes) {
         link.style.display = 'none';
       }
@@ -294,19 +288,16 @@ function adaptSidebarAndModulesByRole() {
         if (label) label.textContent = 'Solicitar Soporte / Tickets';
       }
     } else if (role === 'TECNICO') {
-      // Técnicos no ven Clientes ni Ajustes globales
       if (isClientes || isAjustes) {
         link.style.display = 'none';
       }
     } else if (role === 'SUPERVISOR') {
-      // Supervisores ven todo excepto Ajustes de superadmin
       if (isAjustes) {
         link.style.display = 'none';
       }
     }
   });
 
-  // Si es CLIENTE, deshabilitar acciones de administración técnica en las vistas
   if (role === 'CLIENTE') {
     document.querySelectorAll('[data-modal-target="newPartModal"]').forEach(el => el.style.display = 'none');
     document.querySelectorAll('[data-modal-target="newClientModal"]').forEach(el => el.style.display = 'none');
@@ -322,7 +313,6 @@ function initNotifications() {
 
   let notifDropdown = document.getElementById('notifDropdown');
 
-  // Si el archivo HTML no tiene el dropdown de notificaciones, inyectarlo dinámicamente
   if (!notifDropdown) {
     notifDropdown = document.createElement('div');
     notifDropdown.id = 'notifDropdown';
@@ -376,7 +366,6 @@ function initNotifications() {
     notifBtn.parentElement.appendChild(notifDropdown);
   }
 
-  // Toggle de Notificaciones
   notifBtn.onclick = (e) => {
     e.stopPropagation();
     notifDropdown.classList.toggle('hidden');
@@ -403,10 +392,9 @@ function initNotifications() {
 }
 
 /* ==========================================================================
-   4. GESTIÓN UNIVERSAL DE MODALES Y DRAWERS (DELEGACIÓN GLOBAL)
+   4. GESTIÓN UNIVERSAL DE MODALES Y DRAWERS
    ========================================================================== */
 function initUniversalModalsAndDrawers() {
-  // Asegurar overlay global para drawers
   let overlay = document.getElementById('drawerBackdropOverlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -415,9 +403,9 @@ function initUniversalModalsAndDrawers() {
     document.body.appendChild(overlay);
   }
 
-  // Delegación de click universal para cualquier botón que abra o cierre modales
+  // Delegación de click universal
   document.addEventListener('click', (e) => {
-    // 1. Abrir Modal
+    // 1. Abrir Modal Genérico
     const openTrigger = e.target.closest('[data-modal-target]');
     if (openTrigger) {
       e.preventDefault();
@@ -426,11 +414,10 @@ function initUniversalModalsAndDrawers() {
       if (targetModal) {
         targetModal.classList.remove('hidden');
 
-        // Si es editar orden, capturar la fila y el ID
+        // Si es editar orden, pre-llenar los campos
         if (targetId === 'editOrderModal') {
-          const row = openTrigger.closest('tr');
-          const orderId = openTrigger.getAttribute('data-order-id') || (row ? row.querySelector('.font-mono.font-bold').textContent.trim() : '#OT-2045');
-          currentActiveEditOrder = { orderId, row };
+          const orderId = openTrigger.getAttribute('data-order-id');
+          populateEditOrderModal(orderId);
         }
       }
       return;
@@ -449,13 +436,8 @@ function initUniversalModalsAndDrawers() {
     const drawerTrigger = e.target.closest('.btn-open-drawer');
     if (drawerTrigger) {
       e.preventDefault();
-      const row = drawerTrigger.closest('tr');
-      const orderId = drawerTrigger.getAttribute('data-order-id') || (row ? row.querySelector('.font-mono.font-bold').textContent.trim() : '#OT-2045');
-      const client = drawerTrigger.getAttribute('data-client') || (row ? row.children[1].querySelector('.font-semibold').textContent.trim() : 'Bancolombia S.A.');
-      const device = drawerTrigger.getAttribute('data-device') || (row ? row.children[1].children[1].textContent.trim() : 'Servidor Dell PowerEdge R740');
-      const diag = drawerTrigger.getAttribute('data-diag') || 'Falla en componente redundante. Técnico asignado en datacenter.';
-
-      populateAndOpenDrawer(orderId, client, device, diag, row);
+      const orderId = drawerTrigger.getAttribute('data-order-id');
+      populateAndOpenDrawer(orderId);
       return;
     }
 
@@ -467,19 +449,17 @@ function initUniversalModalsAndDrawers() {
       return;
     }
 
-    // 5. Click en Backdrop del Drawer
+    // 5. Click en Backdrop
     if (e.target === overlay) {
       closeDrawer();
       return;
     }
 
-    // 6. Click fuera del contenedor de modal (backdrop)
     if (e.target.classList.contains('modal-container')) {
       e.target.classList.add('hidden');
     }
   });
 
-  // Tecla Escape cierra todo
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeDrawer();
@@ -491,9 +471,15 @@ function initUniversalModalsAndDrawers() {
   const btnSignSla = document.getElementById('btnSignSla');
   if (btnSignSla) {
     btnSignSla.onclick = () => {
-      if (!currentActiveDrawerOrder) return;
+      if (!currentActiveDrawerOrderId) return;
 
-      const { orderId, row } = currentActiveDrawerOrder;
+      const order = Store.updateOrder(currentActiveDrawerOrderId, {
+        status: 'completado',
+        statusLabel: 'Completado / SLA Cumplido',
+        slaTime: 'SLA Certificado OK',
+        slaTimeOk: true,
+        slaSigned: true
+      });
 
       // Actualizar estado en el Drawer
       const percBadge = document.getElementById('drawerPercBadge');
@@ -502,7 +488,7 @@ function initUniversalModalsAndDrawers() {
         percBadge.textContent = 'Completado / SLA Cumplido';
       }
 
-      // Agregar registro a la bitácora técnica
+      // Bitácora
       const logsList = document.getElementById('drawerLogsList');
       if (logsList) {
         const logEntry = document.createElement('div');
@@ -511,48 +497,53 @@ function initUniversalModalsAndDrawers() {
           <span class="material-symbols-outlined text-emerald-400 text-[16px] mt-0.5">verified</span>
           <div>
             <p class="text-slate-200 text-[11px] font-semibold">Acta de entrega y certificación SLA firmada digitalmente.</p>
-            <span class="text-[9px] font-mono text-emerald-400">Ahora mismo • Aprobado por Mesa de Ayuda</span>
+            <span class="text-[9px] font-mono text-emerald-400">Ahora mismo • Mesa de Ayuda Colombia</span>
           </div>
         `;
         logsList.prepend(logEntry);
       }
 
-      // Actualizar la fila en la tabla de la página
-      if (row) {
-        const statusBadge = row.querySelector('[class*="bg-rose-500"], [class*="bg-amber-500"], [class*="bg-sky-500"]');
-        if (statusBadge) {
-          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold';
-          statusBadge.textContent = 'Completado / SLA Cumplido';
-        }
-        const timeCell = row.querySelector('.text-amber-400');
-        if (timeCell) {
-          timeCell.className = 'flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]';
-          timeCell.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>SLA Certificado OK</span>';
-        }
-      }
+      // Re-renderizar tablas activas
+      renderCurrentPageOrders();
 
-      showToast(`Orden ${orderId} cerrada. Acta de entrega SLA generada y notificada al cliente.`, 'success', 'Certificación SLA');
-      setTimeout(() => closeDrawer(), 600);
+      showToast(`Orden ${currentActiveDrawerOrderId} cerrada. Certificación SLA generada y notificada a la empresa.`, 'success', 'Certificación SLA');
+      setTimeout(() => closeDrawer(), 700);
     };
   }
 }
 
-function populateAndOpenDrawer(orderId, client, device, diag, row) {
+function populateAndOpenDrawer(orderId) {
   const drawer = document.getElementById('techDetailDrawer');
   const overlay = document.getElementById('drawerBackdropOverlay');
   if (!drawer) return;
 
-  currentActiveDrawerOrder = { orderId, client, device, diag, row };
+  const orders = Store.getOrders();
+  const order = orders.find(o => o.id === orderId) || orders[0];
+  if (!order) return;
+
+  currentActiveDrawerOrderId = order.id;
 
   const drawerOrderId = document.getElementById('drawerOrderId');
   const drawerClient = document.getElementById('drawerClient');
   const drawerDevice = document.getElementById('drawerDevice');
   const drawerDiagText = document.getElementById('drawerDiagText');
+  const drawerPercBadge = document.getElementById('drawerPercBadge');
+  const drawerSlaTime = document.getElementById('drawerSlaTime');
 
-  if (drawerOrderId) drawerOrderId.textContent = orderId;
-  if (drawerClient) drawerClient.textContent = client;
-  if (drawerDevice) drawerDevice.textContent = device;
-  if (drawerDiagText && diag) drawerDiagText.textContent = diag;
+  if (drawerOrderId) drawerOrderId.textContent = order.id;
+  if (drawerClient) drawerClient.textContent = `${order.client} — ${order.sede}`;
+  if (drawerDevice) drawerDevice.textContent = `${order.device} • ${order.serial || ''}`;
+  if (drawerDiagText) drawerDiagText.textContent = order.diag;
+  if (drawerSlaTime) drawerSlaTime.textContent = `Estado SLA: ${order.slaTime} • Sede Colombia`;
+  if (drawerPercBadge) {
+    if (order.status === 'completado') {
+      drawerPercBadge.className = 'px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold';
+      drawerPercBadge.textContent = 'Completado / SLA Cumplido';
+    } else {
+      drawerPercBadge.className = 'px-2 py-0.5 rounded-lg bg-sky-500/20 text-brand-cyan font-mono text-xs font-bold';
+      drawerPercBadge.textContent = order.statusLabel || 'En Atención';
+    }
+  }
 
   drawer.classList.remove('translate-x-full', 'pointer-events-none');
   if (overlay) overlay.classList.remove('hidden');
@@ -565,103 +556,119 @@ function closeDrawer() {
   if (overlay) overlay.classList.add('hidden');
 }
 
+function populateEditOrderModal(orderId) {
+  const orders = Store.getOrders();
+  const order = orders.find(o => o.id === orderId) || orders[0];
+  if (!order) return;
+
+  const idHidden = document.getElementById('editOrderIdHidden');
+  const displayId = document.getElementById('editOrderDisplayId');
+  const techSelect = document.getElementById('editOrderTechSelect');
+  const statusSelect = document.getElementById('editOrderStatusSelect');
+  const prioritySelect = document.getElementById('editOrderPrioritySelect');
+  const diagInput = document.getElementById('editOrderDiagInput');
+
+  if (idHidden) idHidden.value = order.id;
+  if (displayId) displayId.value = `${order.id} — ${order.client}`;
+  if (techSelect) techSelect.value = order.techInitials || 'MS';
+  if (statusSelect) statusSelect.value = order.status || 'proceso';
+  if (prioritySelect) prioritySelect.value = order.priority || 'p2';
+  if (diagInput) diagInput.value = order.diag || '';
+}
+
 /* ==========================================================================
    5. MÓDULO DASHBOARD PRINCIPAL
    ========================================================================== */
 function initDashboardModule() {
-  // Manejo de formulario Nueva Orden Express desde el Dashboard
+  renderDashboardOrdersTable();
+
+  // Formulario Nueva Orden Express
   const modalNewOrder = document.getElementById('newOrderModal');
   const formNewOrder = modalNewOrder ? modalNewOrder.querySelector('form') : null;
-  const tableBody = document.querySelector('tbody');
 
   if (formNewOrder) {
     formNewOrder.onsubmit = (e) => {
       e.preventDefault();
-      const client = formNewOrder.querySelector('input[placeholder*="Bancolombia"]').value.trim() || 'Cliente Corporativo Colombia';
-      const device = formNewOrder.querySelector('input[placeholder*="Dell"]').value.trim() || 'Servidor Rack 2U';
-      const diag = formNewOrder.querySelector('textarea').value.trim() || 'Diagnóstico preliminar de hardware.';
-      const priority = formNewOrder.querySelector('select').value;
-      const orderId = `#OT-2024-${Math.floor(Math.random() * 800 + 2060)}`;
+      const inputs = formNewOrder.querySelectorAll('input');
+      const client = (inputs[0] ? inputs[0].value.trim() : '') || 'Bancolombia S.A.';
+      const device = (inputs[3] ? inputs[3].value.trim() : '') || 'Servidor Dell PowerEdge R750';
+      const diag = (formNewOrder.querySelector('textarea') ? formNewOrder.querySelector('textarea').value.trim() : '') || 'Mantenimiento preventivo de hardware.';
+      const prioritySelect = formNewOrder.querySelector('select');
+      const priority = prioritySelect ? prioritySelect.value : 'p2';
 
-      if (tableBody) {
-        const newRow = document.createElement('tr');
-        newRow.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in slide-in-from-top-2';
-        newRow.setAttribute('data-status', priority);
-        newRow.innerHTML = `
-          <td class="py-3 px-3 font-mono font-bold text-brand-cyan">${orderId}</td>
-          <td class="py-3 px-3">
-            <div class="font-semibold text-slate-200">${client} — ${device}</div>
-            <div class="text-[11px] text-slate-400">${diag}</div>
-          </td>
-          <td class="py-3 px-3">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${priority === 'p1' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'} font-semibold">
-              ${priority === 'p1' ? 'Crítica (P1)' : 'Alta (P2)'}
-            </span>
-          </td>
-          <td class="py-3 px-3 text-slate-300 font-medium">Téc. Marco Silva</td>
-          <td class="py-3 px-3">
-            <div class="flex items-center gap-1.5 text-amber-400 font-mono text-[11px]">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-              <span>1h 55m SLA</span>
-            </div>
-          </td>
-          <td class="py-3 px-3 text-right">
-            <div class="inline-flex items-center gap-1">
-              <button 
-                class="btn-open-drawer btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 transition-colors flex items-center gap-1 font-semibold text-[11px]" 
-                data-order-id="${orderId}"
-                data-client="${client}"
-                data-device="${device}"
-                data-diag="${diag}"
-                title="Ver Detalle de Incidente"
-              >
-                <span class="material-symbols-outlined text-[15px]">visibility</span>
-                <span>Detalle</span>
-              </button>
-              <button data-modal-target="editOrderModal" data-order-id="${orderId}" class="btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar orden">
-                <span class="material-symbols-outlined text-[15px]">edit</span>
-              </button>
-            </div>
-          </td>
-        `;
-        tableBody.prepend(newRow);
-      }
+      const newOrder = Store.addOrder({
+        client,
+        device,
+        diag,
+        priority,
+        sede: 'Datacenter Tocancipá • Bahía 02',
+        tech: 'Téc. Marco Silva',
+        techInitials: 'MS',
+        techRole: 'Hardware & Servidores - Tocancipá',
+        status: 'proceso'
+      });
 
+      renderDashboardOrdersTable();
       formNewOrder.reset();
       modalNewOrder.classList.add('hidden');
-      showToast(`Órden express ${orderId} asignada a técnico de guardia en Bogotá.`, 'success', 'Órden Creada');
+      showToast(`Órden express [${newOrder.id}] asignada a técnico de guardia en Bogotá.`, 'success', 'Órden Creada');
     };
   }
 
-  // Manejo de formulario Editar Orden desde el Dashboard
-  const modalEditOrder = document.getElementById('editOrderModal');
-  const formEditOrder = modalEditOrder ? modalEditOrder.querySelector('form') : null;
+  // Formulario Editar Orden
+  const formEditOrder = document.getElementById('formEditOrder');
   if (formEditOrder) {
     formEditOrder.onsubmit = (e) => {
       e.preventDefault();
+      const orderId = document.getElementById('editOrderIdHidden').value;
+      const techSelect = document.getElementById('editOrderTechSelect');
       const statusSelect = document.getElementById('editOrderStatusSelect');
-      const statusVal = statusSelect ? statusSelect.value : 'completado';
+      const prioritySelect = document.getElementById('editOrderPrioritySelect');
+      const diagInput = document.getElementById('editOrderDiagInput');
 
-      if (currentActiveEditOrder && currentActiveEditOrder.row) {
-        const badge = currentActiveEditOrder.row.querySelector('[class*="bg-rose-500"], [class*="bg-amber-500"], [class*="bg-sky-500"]');
-        if (badge) {
-          if (statusVal === 'completado') {
-            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold';
-            badge.textContent = 'Completado / Listo';
-          } else if (statusVal === 'reparacion') {
-            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30 font-semibold';
-            badge.textContent = 'En Reparación Activa';
-          } else {
-            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold';
-            badge.textContent = 'En Diagnóstico';
-          }
-        }
-      }
+      const techMap = {
+        MS: { tech: 'Téc. Marco Silva', techInitials: 'MS', techRole: 'Hardware & Servidores' },
+        AR: { tech: 'Ing. Andrés Ruiz', techInitials: 'AR', techRole: 'Storage & RAID' },
+        SR: { tech: 'Ing. Sofía Reyes', techInitials: 'SR', techRole: 'Redes & Fibra' }
+      };
 
-      modalEditOrder.classList.add('hidden');
-      showToast('Estado técnico de la orden actualizado en tiempo real.', 'success', 'Orden Actualizada');
+      const selectedTech = techMap[techSelect.value] || techMap.MS;
+      const statusVal = statusSelect.value;
+      const priorityVal = prioritySelect.value;
+      const diagVal = diagInput.value.trim();
+
+      Store.updateOrder(orderId, {
+        tech: selectedTech.tech,
+        techInitials: selectedTech.techInitials,
+        techRole: selectedTech.techRole,
+        status: statusVal,
+        statusLabel: statusVal === 'completado' ? 'Completado / SLA Cumplido' : statusVal === 'pendiente' ? 'Pendiente / Crítico' : 'En Diagnóstico / Triage',
+        priority: priorityVal,
+        priorityLabel: priorityVal === 'p1' ? 'Crítica (2h)' : priorityVal === 'p2' ? 'Alta (6h)' : 'Media (12h)',
+        diag: diagVal,
+        slaTime: statusVal === 'completado' ? 'SLA Certificado OK' : 'En tiempo normativo',
+        slaTimeOk: statusVal === 'completado'
+      });
+
+      renderDashboardOrdersTable();
+      document.getElementById('editOrderModal').classList.add('hidden');
+      showToast(`Órden [${orderId}] actualizada correctamente.`, 'success', 'Orden Guardada');
     };
   }
+
+  // Delegación de botón eliminar orden
+  document.addEventListener('click', (e) => {
+    const btnDel = e.target.closest('.btn-delete-order');
+    if (btnDel) {
+      e.preventDefault();
+      const orderId = btnDel.getAttribute('data-order-id');
+      if (confirm(`¿Confirma que desea eliminar la orden ${orderId} del registro?`)) {
+        Store.deleteOrder(orderId);
+        renderDashboardOrdersTable();
+        showToast(`Orden ${orderId} eliminada del sistema.`, 'info', 'Registro Eliminado');
+      }
+    }
+  });
 
   // Botones de Turno y Exportación
   document.querySelectorAll('button').forEach(btn => {
@@ -680,310 +687,801 @@ function initDashboardModule() {
   });
 }
 
-/* ==========================================================================
-   6. MÓDULO INVENTARIO DE REPUESTOS
-   ========================================================================== */
-function initInventarioModule() {
-  const modalNewPart = document.getElementById('newPartModal');
-  const modalEditPart = document.getElementById('editPartModal');
-  const formNewPart = modalNewPart ? modalNewPart.querySelector('form') : null;
-  const formEditPart = modalEditPart ? modalEditPart.querySelector('form') : null;
-  const tableBody = document.querySelector('#inventoryTableContent tbody');
+function renderDashboardOrdersTable() {
+  const tableBody = document.querySelector('tbody');
+  if (!tableBody) return;
 
-  // Registrar Repuesto
-  if (formNewPart) {
-    formNewPart.onsubmit = (e) => {
-      e.preventDefault();
-      const skuInput = formNewPart.querySelector('input[placeholder*="PSU"]') || formNewPart.querySelectorAll('input')[0];
-      const nameInput = formNewPart.querySelector('input[placeholder*="Fuente"]') || formNewPart.querySelectorAll('input')[1];
-      const qtyInput = formNewPart.querySelector('input[type="number"]');
-      const priceInput = formNewPart.querySelector('input[placeholder*="450.000"]') || formNewPart.querySelector('input[placeholder*="185.00"]');
-      const rackInput = formNewPart.querySelector('input[placeholder*="Rack"]') || formNewPart.querySelectorAll('input')[4];
+  const orders = Store.getOrders();
+  tableBody.innerHTML = '';
 
-      const sku = (skuInput && skuInput.value.trim().toUpperCase()) || `SKU-COL-${Date.now().toString().slice(-4)}`;
-      const name = (nameInput && nameInput.value.trim()) || 'Componente Servidor Enterprise';
-      const qty = parseInt(qtyInput ? qtyInput.value : '10', 10);
-      const price = priceInput ? priceInput.value.trim() : '480.000 COP';
-      const rack = (rackInput && rackInput.value.trim()) || 'Rack Central / Gav. 02';
+  orders.slice(0, 6).forEach(order => {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in';
+    tr.setAttribute('data-status', order.priority || 'p2');
 
-      if (tableBody) {
-        const newRow = document.createElement('tr');
-        newRow.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in slide-in-from-top-2';
-        newRow.setAttribute('data-category', 'storage');
-        newRow.innerHTML = `
-          <td class="py-3 px-4 font-mono font-bold text-brand-cyan">${sku}</td>
-          <td class="py-3 px-4">
-            <div class="font-semibold text-slate-200">${name}</div>
-            <div class="text-[11px] text-slate-400">Componente catalogado en inventario Colombia</div>
-          </td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/20">Infraestructura</span>
-          </td>
-          <td class="py-3 px-4">
-            <div class="space-y-1">
-              <div class="flex justify-between text-[10px]">
-                <span class="text-emerald-400 font-bold font-mono item-stock-label">${qty} u. (Óptimo)</span>
-                <span class="text-slate-400 font-mono">Mín: 5</span>
-              </div>
-              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div class="bg-emerald-500 h-full rounded-full" style="width: 80%"></div>
-              </div>
-            </div>
-          </td>
-          <td class="py-3 px-4 font-mono text-slate-200">$${price.includes('COP') ? price : price + ' COP'}</td>
-          <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${rack}</td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Abastecido</span>
-          </td>
-          <td class="py-3 px-4 text-right">
-            <button data-modal-target="editPartModal" class="btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Ajustar Stock">
-              <span class="material-symbols-outlined text-[15px]">tune</span>
-            </button>
-          </td>
-        `;
-        tableBody.prepend(newRow);
-      }
+    const priorityBadge = order.priority === 'p1'
+      ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold">Crítica (P1)</span>'
+      : '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">Alta (P2)</span>';
 
-      // Actualizar contador Total SKU
-      const totalSkuEl = document.querySelector('.font-display.text-sm.font-bold.text-white');
-      if (totalSkuEl && !isNaN(parseInt(totalSkuEl.textContent))) {
-        totalSkuEl.textContent = parseInt(totalSkuEl.textContent) + 1;
-      }
+    const slaStatusHtml = order.status === 'completado'
+      ? `<div class="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>SLA Certificado OK</span></div>`
+      : `<div class="flex items-center gap-1.5 text-amber-400 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span><span>${order.slaTime || '32m restantes'}</span></div>`;
 
-      formNewPart.reset();
-      modalNewPart.classList.add('hidden');
-      showToast(`Repuesto [${sku}] catalogado con éxito en el almacén de Tocancipá.`, 'success', 'Inventario Actualizado');
-    };
-  }
-
-  // Capturar fila al presionar "Ajustar Stock"
-  document.addEventListener('click', (e) => {
-    const tuneBtn = e.target.closest('[data-modal-target="editPartModal"]');
-    if (tuneBtn) {
-      const row = tuneBtn.closest('tr');
-      if (row) {
-        const skuEl = row.querySelector('.font-mono.font-bold');
-        currentSkuToEdit = {
-          sku: skuEl ? skuEl.textContent.trim() : 'SKU',
-          row: row
-        };
-      }
-    }
+    tr.innerHTML = `
+      <td class="py-3 px-3 font-mono font-bold text-brand-cyan">${order.id}</td>
+      <td class="py-3 px-3">
+        <div class="font-semibold text-slate-200">${order.client} — ${order.device}</div>
+        <div class="text-[11px] text-slate-400">${order.diag}</div>
+      </td>
+      <td class="py-3 px-3">${priorityBadge}</td>
+      <td class="py-3 px-3 text-slate-300 font-medium">${order.tech}</td>
+      <td class="py-3 px-3">${slaStatusHtml}</td>
+      <td class="py-3 px-3 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button 
+            class="btn-open-drawer btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 transition-colors flex items-center gap-1 font-semibold text-[11px]" 
+            data-order-id="${order.id}"
+            title="Ver Detalle de Incidente"
+          >
+            <span class="material-symbols-outlined text-[15px]">visibility</span>
+            <span>Detalle</span>
+          </button>
+          <button data-modal-target="editOrderModal" data-order-id="${order.id}" class="btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar orden">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+          <button data-order-id="${order.id}" class="btn-delete-order btn-pro p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all border border-rose-500/20" title="Eliminar orden">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
   });
+}
 
-  // Guardar Ajuste de Stock
-  if (formEditPart) {
-    formEditPart.onsubmit = (e) => {
-      e.preventDefault();
-      const qtyInput = formEditPart.querySelector('input[type="number"]');
-      const diff = parseInt(qtyInput ? qtyInput.value : '0', 10);
-
-      if (currentSkuToEdit && currentSkuToEdit.row) {
-        const stockLabel = currentSkuToEdit.row.querySelector('.item-stock-label');
-        if (stockLabel) {
-          const currentQty = parseInt(stockLabel.textContent) || 5;
-          const nextQty = Math.max(0, currentQty + diff);
-          const isCritical = nextQty <= 2;
-          const isLow = nextQty > 2 && nextQty <= 5;
-
-          stockLabel.textContent = `${nextQty} u. (${isCritical ? 'Crítico' : isLow ? 'Bajo' : 'Óptimo'})`;
-          stockLabel.className = `font-bold font-mono item-stock-label ${isCritical ? 'text-rose-400' : isLow ? 'text-amber-400' : 'text-emerald-400'}`;
-        }
-      }
-
-      modalEditPart.classList.add('hidden');
-      formEditPart.reset();
-      showToast(`Stock de [${currentSkuToEdit ? currentSkuToEdit.sku : 'SKU'}] actualizado (${diff >= 0 ? '+' : ''}${diff} unidades).`, 'success', 'Stock Modificado');
-    };
+function renderCurrentPageOrders() {
+  const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  if (currentPage.includes('ordenes')) {
+    renderOrdersTable();
+  } else if (currentPage.includes('index') || currentPage === '') {
+    renderDashboardOrdersTable();
   }
 }
 
 /* ==========================================================================
-   7. MÓDULO ÓRDENES DE TRABAJO
+   6. MÓDULO ÓRDENES DE TRABAJO (ordenes.html)
    ========================================================================== */
 function initOrdenesModule() {
+  renderOrdersTable();
+
+  // Nueva Orden Form
   const modalNewOrder = document.getElementById('newOrderModal');
   const formNewOrder = modalNewOrder ? modalNewOrder.querySelector('form') : null;
-  const tableBody = document.querySelector('#ordersTableContent tbody');
 
   if (formNewOrder) {
     formNewOrder.onsubmit = (e) => {
       e.preventDefault();
-      const client = formNewOrder.querySelector('input[placeholder*="Bancolombia"]').value.trim() || 'Bancolombia S.A.';
-      const device = formNewOrder.querySelector('input[placeholder*="Dell"]').value.trim() || 'Servidor Rack 2U';
-      const diag = formNewOrder.querySelector('textarea').value.trim() || 'Mantenimiento técnico preventivo y correctivo.';
-      const priority = formNewOrder.querySelector('select').value;
-      const orderId = `#OT-2024-${Math.floor(Math.random() * 800 + 2070)}`;
+      const inputs = formNewOrder.querySelectorAll('input');
+      const client = (inputs[0] ? inputs[0].value.trim() : '') || 'Bancolombia S.A.';
+      const device = (inputs[3] ? inputs[3].value.trim() : '') || 'Servidor Dell PowerEdge R750';
+      const diag = (formNewOrder.querySelector('textarea') ? formNewOrder.querySelector('textarea').value.trim() : '') || 'Mantenimiento técnico preventivo y correctivo.';
+      const prioritySelect = formNewOrder.querySelector('select');
+      const priority = prioritySelect ? prioritySelect.value : 'p2';
 
-      if (tableBody) {
-        const newRow = document.createElement('tr');
-        newRow.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in slide-in-from-top-2';
-        newRow.setAttribute('data-status', 'proceso');
-        newRow.innerHTML = `
-          <td class="py-3 px-4 font-mono font-bold text-brand-cyan">
-            <div class="flex items-center gap-1.5">
-              <span class="w-1.5 h-5 rounded-full ${priority === 'p1' ? 'bg-rose-500' : 'bg-amber-500'}"></span>
-              <span>${orderId}</span>
-            </div>
-          </td>
-          <td class="py-3 px-4">
-            <div class="font-semibold text-slate-200">${client}</div>
-            <div class="text-[11px] text-slate-400">Sede Datacenter Bogotá</div>
-          </td>
-          <td class="py-3 px-4">
-            <div class="font-semibold text-slate-200">${device}</div>
-            <div class="text-[10px] font-mono text-brand-electric">SN: COL-8HG9-DELL</div>
-            <div class="text-[11px] text-slate-400">${diag}</div>
-          </td>
-          <td class="py-3 px-4">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-lg bg-sky-500/20 text-brand-cyan border border-sky-500/30 flex items-center justify-center font-mono font-bold text-[10px]">MS</div>
-              <div>
-                <div class="font-semibold text-slate-200 text-xs">Téc. Marco Silva</div>
-                <div class="text-[9px] text-slate-400 font-mono">Tocancipá</div>
-              </div>
-            </div>
-          </td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${priority === 'p1' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'} font-semibold">
-              ${priority === 'p1' ? 'Crítica (2h)' : 'Alta (6h)'}
-            </span>
-          </td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
-              En Diagnóstico / Triage
-            </span>
-          </td>
-          <td class="py-3 px-4 text-right">
-            <div class="inline-flex items-center gap-1">
-              <button 
-                class="btn-open-drawer btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 transition-colors flex items-center gap-1 font-semibold text-[11px]" 
-                data-order-id="${orderId}"
-                data-client="${client}"
-                data-device="${device}"
-                data-diag="${diag}"
-                title="Ver Detalle Técnico"
-              >
-                <span class="material-symbols-outlined text-[15px]">visibility</span>
-                <span>Ver Detalle</span>
-              </button>
-              <button data-modal-target="editOrderModal" data-order-id="${orderId}" class="btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar orden">
-                <span class="material-symbols-outlined text-[15px]">edit</span>
-              </button>
-            </div>
-          </td>
-        `;
-        tableBody.prepend(newRow);
-      }
+      const newOrder = Store.addOrder({
+        client,
+        device,
+        diag,
+        priority,
+        sede: 'Datacenter Zona Franca Piso 4',
+        tech: 'Ing. Andrés Ruiz',
+        techInitials: 'AR',
+        techRole: 'Especialista Storage & RAID',
+        status: 'proceso'
+      });
 
+      renderOrdersTable();
       formNewOrder.reset();
       modalNewOrder.classList.add('hidden');
-      showToast(`Órden ${orderId} creada y radicada exitosamente.`, 'success', 'Orden Registrada');
+      showToast(`Órden [${newOrder.id}] radicada exitosamente en el sistema.`, 'success', 'Orden Registrada');
     };
   }
 
-  // Manejo de formulario Editar Orden
-  const modalEditOrder = document.getElementById('editOrderModal');
-  const formEditOrder = modalEditOrder ? modalEditOrder.querySelector('form') : null;
+  // Editar Orden Form
+  const formEditOrder = document.getElementById('formEditOrder');
   if (formEditOrder) {
     formEditOrder.onsubmit = (e) => {
       e.preventDefault();
-      const select = formEditOrder.querySelectorAll('select')[1];
-      const newStatus = select ? select.options[select.selectedIndex].text : 'Completado';
+      const orderId = document.getElementById('editOrderIdHidden').value;
+      const techSelect = document.getElementById('editOrderTechSelect');
+      const statusSelect = document.getElementById('editOrderStatusSelect');
+      const prioritySelect = document.getElementById('editOrderPrioritySelect');
+      const diagInput = document.getElementById('editOrderDiagInput');
 
-      if (currentActiveEditOrder && currentActiveEditOrder.row) {
-        const badge = currentActiveEditOrder.row.querySelector('[class*="bg-rose-500"], [class*="bg-amber-500"], [class*="bg-sky-500"], [class*="bg-emerald-500"]');
-        if (badge) {
-          badge.textContent = newStatus;
-          if (newStatus.includes('Completado')) {
-            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold';
-          }
-        }
-      }
+      const techMap = {
+        MS: { tech: 'Téc. Marco Silva', techInitials: 'MS', techRole: 'Hardware & Servidores' },
+        AR: { tech: 'Ing. Andrés Ruiz', techInitials: 'AR', techRole: 'Storage & RAID' },
+        SR: { tech: 'Ing. Sofía Reyes', techInitials: 'SR', techRole: 'Redes & Fibra' }
+      };
 
-      modalEditOrder.classList.add('hidden');
-      showToast('Estado y asignación de la orden modificados con éxito.', 'success', 'Órden Actualizada');
+      const selectedTech = techMap[techSelect.value] || techMap.AR;
+      const statusVal = statusSelect.value;
+      const priorityVal = prioritySelect.value;
+      const diagVal = diagInput.value.trim();
+
+      Store.updateOrder(orderId, {
+        tech: selectedTech.tech,
+        techInitials: selectedTech.techInitials,
+        techRole: selectedTech.techRole,
+        status: statusVal,
+        statusLabel: statusVal === 'completado' ? 'Completado / SLA Cumplido' : statusVal === 'pendiente' ? 'Pendiente / Crítico' : 'En Diagnóstico / Triage',
+        priority: priorityVal,
+        priorityLabel: priorityVal === 'p1' ? 'Crítica (2h)' : priorityVal === 'p2' ? 'Alta (6h)' : 'Media (12h)',
+        diag: diagVal,
+        slaTime: statusVal === 'completado' ? 'SLA Certificado OK' : 'En tiempo normativo',
+        slaTimeOk: statusVal === 'completado'
+      });
+
+      renderOrdersTable();
+      document.getElementById('editOrderModal').classList.add('hidden');
+      showToast(`Órden [${orderId}] actualizada correctamente.`, 'success', 'Orden Guardada');
     };
   }
+
+  // Eliminar Orden
+  document.addEventListener('click', (e) => {
+    const btnDel = e.target.closest('.btn-delete-order');
+    if (btnDel) {
+      e.preventDefault();
+      const orderId = btnDel.getAttribute('data-order-id');
+      if (confirm(`¿Confirma que desea eliminar la orden ${orderId} del registro?`)) {
+        Store.deleteOrder(orderId);
+        renderOrdersTable();
+        showToast(`Orden ${orderId} eliminada del sistema.`, 'info', 'Registro Eliminado');
+      }
+    }
+  });
+}
+
+function renderOrdersTable() {
+  const tableBody = document.querySelector('#ordersTableContent tbody');
+  if (!tableBody) return;
+
+  const orders = Store.getOrders();
+  const searchInput = document.getElementById('ordersFilterSearch');
+  const statusSelect = document.getElementById('ordersStatusSelect');
+
+  const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const statusFilter = (statusSelect ? statusSelect.value : 'all').toLowerCase();
+
+  tableBody.innerHTML = '';
+
+  let visibleCount = 0;
+  orders.forEach(order => {
+    const matchesSearch = !query || order.id.toLowerCase().includes(query) || order.client.toLowerCase().includes(query) || order.device.toLowerCase().includes(query) || order.tech.toLowerCase().includes(query);
+    const matchesStatus = statusFilter === 'all' || (order.status || '').toLowerCase().includes(statusFilter);
+
+    if (!matchesSearch || !matchesStatus) return;
+    visibleCount++;
+
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in';
+    tr.setAttribute('data-status', order.status || 'proceso');
+
+    const priorityBadge = order.priority === 'p1'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold flex items-center gap-1 w-max"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>Crítica (2h)</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1 w-max"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Alta (6h)</span>`;
+
+    const statusBadge = order.status === 'completado'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">Completado / SLA Cumplido</span>`
+      : order.status === 'pendiente'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold">Pendiente / Crítico</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30 font-semibold">${order.statusLabel || 'En Diagnóstico / Triage'}</span>`;
+
+    tr.innerHTML = `
+      <td class="py-3 px-4 font-mono font-bold text-brand-cyan">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-5 rounded-full ${order.priority === 'p1' ? 'bg-rose-500' : 'bg-amber-500'}"></span>
+          <span>${order.id}</span>
+        </div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="font-semibold text-slate-200">${order.client}</div>
+        <div class="text-[11px] text-slate-400">${order.sede}</div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="font-semibold text-slate-200">${order.device}</div>
+        <div class="text-[10px] font-mono text-brand-electric">${order.serial || 'SN: COL-ENTERPRISE'}</div>
+        <div class="text-[11px] text-slate-400 truncate max-w-xs">${order.diag}</div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-sky-500/20 text-brand-cyan border border-sky-500/30 flex items-center justify-center font-mono font-bold text-[10px]">${order.techInitials || 'TC'}</div>
+          <div>
+            <div class="font-semibold text-slate-200 text-xs">${order.tech}</div>
+            <div class="text-[9px] text-slate-400 font-mono">${order.techRole || 'Campo'}</div>
+          </div>
+        </div>
+      </td>
+      <td class="py-3 px-4">${priorityBadge}</td>
+      <td class="py-3 px-4">${statusBadge}</td>
+      <td class="py-3 px-4 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button 
+            class="btn-open-drawer btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 transition-colors flex items-center gap-1 font-semibold text-[11px]" 
+            data-order-id="${order.id}"
+            title="Ver Detalle Técnico"
+          >
+            <span class="material-symbols-outlined text-[15px]">visibility</span>
+            <span>Ver Detalle</span>
+          </button>
+          <button data-modal-target="editOrderModal" data-order-id="${order.id}" class="btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar orden">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+          <button data-order-id="${order.id}" class="btn-delete-order btn-pro p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all border border-rose-500/20" title="Eliminar orden">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  const counterBadge = document.getElementById('ordersCounterBadge');
+  if (counterBadge) counterBadge.textContent = `${visibleCount} orden${visibleCount === 1 ? '' : 'es'}`;
 }
 
 /* ==========================================================================
-   8. MÓDULO TICKETS Y REQUERIMIENTOS
+   7. MÓDULO INVENTARIO DE REPUESTOS (inventario.html)
+   ========================================================================== */
+function initInventarioModule() {
+  renderInventoryTable();
+
+  // Registrar Repuesto
+  const formNewPart = document.getElementById('formNewPart') || document.querySelector('#newPartModal form');
+  if (formNewPart) {
+    formNewPart.onsubmit = (e) => {
+      e.preventDefault();
+      const sku = document.getElementById('newPartSku')?.value || `SKU-COL-${Date.now().toString().slice(-4)}`;
+      const name = document.getElementById('newPartName')?.value || 'Componente IT Servidor';
+      const category = document.getElementById('newPartCategory')?.value || 'storage';
+      const price = document.getElementById('newPartPrice')?.value || '450.000 COP';
+      const qty = parseInt(document.getElementById('newPartQty')?.value || '10', 10);
+      const minQty = parseInt(document.getElementById('newPartMinQty')?.value || '5', 10);
+      const rack = document.getElementById('newPartRack')?.value || 'Rack Central / Gav. 02';
+
+      Store.addInventoryItem({
+        sku,
+        name,
+        category,
+        price,
+        qty,
+        minQty,
+        rack
+      });
+
+      renderInventoryTable();
+      formNewPart.reset();
+      document.getElementById('newPartModal').classList.add('hidden');
+      showToast(`Repuesto [${sku}] catalogado con éxito en el almacén.`, 'success', 'Inventario Actualizado');
+    };
+  }
+
+  // Ajuste de Stock Rápido (tune)
+  const formEditStock = document.getElementById('formEditStock');
+  if (formEditStock) {
+    formEditStock.onsubmit = (e) => {
+      e.preventDefault();
+      const sku = document.getElementById('adjustPartSku').value;
+      const diff = parseInt(document.getElementById('adjustPartDiff').value || '0', 10);
+
+      const updated = Store.adjustStock(sku, diff);
+      renderInventoryTable();
+      document.getElementById('editPartModal').classList.add('hidden');
+      formEditStock.reset();
+      showToast(`Stock de [${sku}] actualizado a ${updated.qty} unidades (${diff >= 0 ? '+' : ''}${diff}).`, 'success', 'Stock Modificado');
+    };
+  }
+
+  // Editar Detalles de Repuesto
+  const formEditPartDetails = document.getElementById('formEditPartDetails');
+  if (formEditPartDetails) {
+    formEditPartDetails.onsubmit = (e) => {
+      e.preventDefault();
+      const sku = document.getElementById('editPartSkuHidden').value;
+      const name = document.getElementById('editPartNameInput').value.trim();
+      const category = document.getElementById('editPartCategorySelect').value;
+      const price = document.getElementById('editPartPriceInput').value.trim();
+      const rack = document.getElementById('editPartRackInput').value.trim();
+
+      Store.updateInventoryItem(sku, {
+        name,
+        category,
+        categoryLabel: category === 'power' ? 'Fuentes de Poder' : category === 'ram' ? 'Memorias RAM' : category === 'sfp' ? 'Conectividad' : 'Almacenamiento',
+        price,
+        rack
+      });
+
+      renderInventoryTable();
+      document.getElementById('editPartDetailsModal').classList.add('hidden');
+      showToast(`Repuesto [${sku}] modificado con éxito.`, 'success', 'Repuesto Actualizado');
+    };
+  }
+
+  // Delegación de clicks en la tabla de inventario
+  document.addEventListener('click', (e) => {
+    // Abrir Ajuste de Stock
+    const btnAdjust = e.target.closest('.btn-adjust-stock');
+    if (btnAdjust) {
+      e.preventDefault();
+      const sku = btnAdjust.getAttribute('data-sku');
+      const item = Store.getInventory().find(i => i.sku === sku);
+      if (item) {
+        document.getElementById('adjustPartSku').value = item.sku;
+        document.getElementById('adjustPartDisplay').textContent = `${item.sku} — ${item.name} (Stock Actual: ${item.qty} u.)`;
+        document.getElementById('editPartModal').classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Abrir Editar Detalles
+    const btnEdit = e.target.closest('.btn-edit-part');
+    if (btnEdit) {
+      e.preventDefault();
+      const sku = btnEdit.getAttribute('data-sku');
+      const item = Store.getInventory().find(i => i.sku === sku);
+      if (item) {
+        document.getElementById('editPartSkuHidden').value = item.sku;
+        document.getElementById('editPartSkuDisplay').value = item.sku;
+        document.getElementById('editPartNameInput').value = item.name;
+        document.getElementById('editPartCategorySelect').value = item.category || 'storage';
+        document.getElementById('editPartPriceInput').value = item.priceFormatted || `${item.price} COP`;
+        document.getElementById('editPartRackInput').value = item.rack;
+        document.getElementById('editPartDetailsModal').classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Eliminar Repuesto
+    const btnDel = e.target.closest('.btn-delete-part');
+    if (btnDel) {
+      e.preventDefault();
+      const sku = btnDel.getAttribute('data-sku');
+      if (confirm(`¿Confirma que desea eliminar el repuesto SKU ${sku}?`)) {
+        Store.deleteInventoryItem(sku);
+        renderInventoryTable();
+        showToast(`Repuesto ${sku} eliminado del almacén.`, 'info', 'Repuesto Eliminado');
+      }
+    }
+  });
+}
+
+function renderInventoryTable() {
+  const tableBody = document.querySelector('#inventoryTableContent tbody') || document.getElementById('inventoryTableBody');
+  if (!tableBody) return;
+
+  const items = Store.getInventory();
+  const searchInput = document.querySelector('input[placeholder*="Filtrar por SKU"]');
+  const catSelect = document.querySelector('select:has(option[value="storage"])');
+
+  const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const catFilter = (catSelect ? catSelect.value : 'all').toLowerCase();
+
+  tableBody.innerHTML = '';
+
+  let totalSkus = 0;
+  let totalValueCop = 0;
+  let criticalCount = 0;
+
+  items.forEach(item => {
+    totalSkus++;
+    totalValueCop += (item.price || 0) * (item.qty || 0);
+    if (item.qty <= 2) criticalCount++;
+
+    const matchesSearch = !query || item.sku.toLowerCase().includes(query) || item.name.toLowerCase().includes(query) || item.rack.toLowerCase().includes(query);
+    const matchesCat = catFilter === 'all' || (item.category || '').toLowerCase() === catFilter;
+
+    if (!matchesSearch || !matchesCat) return;
+
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in';
+    tr.setAttribute('data-category', item.category || 'storage');
+
+    const isCritical = item.qty <= 2;
+    const isLow = !isCritical && item.qty <= (item.minQty || 5);
+    const stockColor = isCritical ? 'text-rose-400' : isLow ? 'text-amber-400' : 'text-emerald-400';
+    const barColor = isCritical ? 'bg-rose-500' : isLow ? 'bg-amber-500' : 'bg-emerald-500';
+    const barPercent = Math.min(100, Math.round((item.qty / ((item.minQty || 5) * 2)) * 100));
+
+    const statusBadge = isCritical
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold">Crítico / Urgente</span>`
+      : isLow
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">Bajo / Reponer</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">Abastecido</span>`;
+
+    tr.innerHTML = `
+      <td class="py-3 px-4 font-mono font-bold text-brand-cyan">${item.sku}</td>
+      <td class="py-3 px-4">
+        <div class="font-semibold text-slate-200">${item.name}</div>
+        <div class="text-[11px] text-slate-400">${item.desc}</div>
+      </td>
+      <td class="py-3 px-4">
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/20">${item.categoryLabel || 'Infraestructura'}</span>
+      </td>
+      <td class="py-3 px-4">
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px]">
+            <span class="${stockColor} font-bold font-mono">${item.qty} u. (${item.status})</span>
+            <span class="text-slate-400 font-mono">Mín: ${item.minQty || 5}</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div class="${barColor} h-full rounded-full" style="width: ${barPercent}%"></div>
+          </div>
+        </div>
+      </td>
+      <td class="py-3 px-4 font-mono font-semibold text-slate-200">${item.priceFormatted || '$' + item.price + ' COP'}</td>
+      <td class="py-3 px-4 font-mono text-slate-300 text-[11px]">${item.rack}</td>
+      <td class="py-3 px-4">${statusBadge}</td>
+      <td class="py-3 px-4 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button data-sku="${item.sku}" class="btn-adjust-stock btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Ajustar Stock Rápido">
+            <span class="material-symbols-outlined text-[15px]">tune</span>
+          </button>
+          <button data-sku="${item.sku}" class="btn-edit-part btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar Repuesto">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+          <button data-sku="${item.sku}" class="btn-delete-part btn-pro p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all border border-rose-500/20" title="Eliminar Repuesto">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  // Actualizar Widgets de Métricas
+  const totalSkuEl = document.querySelector('.font-display.text-sm.font-bold.text-white');
+  if (totalSkuEl) totalSkuEl.textContent = totalSkus;
+
+  const totalValueEl = document.querySelectorAll('.font-display.text-sm.font-bold.text-white')[1];
+  if (totalValueEl) totalValueEl.innerHTML = `$${totalValueCop.toLocaleString('es-CO')} <span class="text-[9px] text-slate-400 font-mono font-normal">COP</span>`;
+
+  const criticalEl = document.querySelector('.font-display.text-sm.font-bold.text-rose-400');
+  if (criticalEl) criticalEl.textContent = `${criticalCount} Ítems`;
+}
+
+/* ==========================================================================
+   8. MÓDULO TICKETS Y REQUERIMIENTOS (tickets.html)
    ========================================================================== */
 function initTicketsModule() {
+  renderTicketsTable();
+
+  // Formulario Crear Ticket
   const formTicket = document.querySelector('form[data-validate="true"]');
   if (formTicket) {
     formTicket.onsubmit = (e) => {
       e.preventDefault();
-      const ticketId = `#TK-COL-${Math.floor(Math.random() * 8000 + 1000)}`;
-      showToast(`Requerimiento ${ticketId} registrado en Mesa de Ayuda Colombia. Notificación enviada al solicitante.`, 'success', 'Ticket Radicado');
+      const selects = formTicket.querySelectorAll('select');
+      const inputs = formTicket.querySelectorAll('input');
+      const textarea = formTicket.querySelector('textarea');
+
+      const type = selects[0] ? selects[0].value : 'hardware';
+      const priority = selects[1] ? selects[1].value : 'p2';
+      const clientEmail = inputs[0] ? inputs[0].value.trim() : 'usuario@empresa.com.co';
+      const phone = inputs[1] ? inputs[1].value.trim() : '+57 310 123 4567';
+      const hostname = inputs[2] ? inputs[2].value.trim() : 'SRV-HOST-01';
+      const location = inputs[3] ? inputs[3].value.trim() : 'Datacenter Zona Franca';
+      const diag = textarea ? textarea.value.trim() : 'Incidente técnico radicado.';
+
+      const newTicket = Store.addTicket({
+        clientEmail,
+        phone,
+        type,
+        priority,
+        hostname,
+        location,
+        diag
+      });
+
+      renderTicketsTable();
       formTicket.reset();
+      showToast(`Ticket [${newTicket.id}] radicado con éxito en Mesa de Ayuda Colombia. Notificación enviada.`, 'success', 'Ticket Generado');
     };
   }
+
+  // Formulario Editar Ticket
+  const formEditTicket = document.getElementById('formEditTicket');
+  if (formEditTicket) {
+    formEditTicket.onsubmit = (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editTicketId').value;
+      const status = document.getElementById('editTicketStatusSelect').value;
+      const priority = document.getElementById('editTicketPrioritySelect').value;
+      const notes = document.getElementById('editTicketNotes').value.trim();
+
+      Store.updateTicket(id, {
+        status,
+        priority,
+        priorityLabel: priority === 'p1' ? 'P1 - Crítica (2h)' : priority === 'p2' ? 'P2 - Alta (4h)' : 'P3 - Media (8h)',
+        diag: notes || undefined
+      });
+
+      renderTicketsTable();
+      document.getElementById('editTicketModal').classList.add('hidden');
+      showToast(`Ticket [${id}] actualizado a estado: ${status}.`, 'success', 'Ticket Actualizado');
+    };
+  }
+
+  // Delegación de clicks en la tabla de tickets
+  document.addEventListener('click', (e) => {
+    // Editar Ticket
+    const btnEdit = e.target.closest('.btn-edit-ticket');
+    if (btnEdit) {
+      e.preventDefault();
+      const id = btnEdit.getAttribute('data-ticket-id');
+      const ticket = Store.getTickets().find(t => t.id === id);
+      if (ticket) {
+        document.getElementById('editTicketId').value = ticket.id;
+        document.getElementById('editTicketIdDisplay').value = `${ticket.id} • ${ticket.clientEmail}`;
+        document.getElementById('editTicketStatusSelect').value = ticket.status || 'Abierto';
+        document.getElementById('editTicketPrioritySelect').value = ticket.priority || 'p2';
+        document.getElementById('editTicketNotes').value = ticket.diag || '';
+        document.getElementById('editTicketModal').classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Eliminar Ticket
+    const btnDel = e.target.closest('.btn-delete-ticket');
+    if (btnDel) {
+      e.preventDefault();
+      const id = btnDel.getAttribute('data-ticket-id');
+      if (confirm(`¿Confirma que desea eliminar el ticket ${id}?`)) {
+        Store.deleteTicket(id);
+        renderTicketsTable();
+        showToast(`Ticket ${id} eliminado del registro.`, 'info', 'Ticket Eliminado');
+      }
+    }
+  });
+}
+
+function renderTicketsTable() {
+  const tableBody = document.querySelector('#ticketsTableContent tbody');
+  if (!tableBody) return;
+
+  const tickets = Store.getTickets();
+  const searchInput = document.getElementById('ticketsFilterSearch');
+  const statusSelect = document.getElementById('ticketsStatusSelect');
+
+  const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const statusFilter = (statusSelect ? statusSelect.value : 'all').toLowerCase();
+
+  tableBody.innerHTML = '';
+
+  let visibleCount = 0;
+  tickets.forEach(ticket => {
+    const matchesSearch = !query || ticket.id.toLowerCase().includes(query) || ticket.clientEmail.toLowerCase().includes(query) || ticket.hostname.toLowerCase().includes(query) || ticket.location.toLowerCase().includes(query);
+    const matchesStatus = statusFilter === 'all' || (ticket.status || '').toLowerCase() === statusFilter;
+
+    if (!matchesSearch || !matchesStatus) return;
+    visibleCount++;
+
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in';
+
+    const priorityBadge = ticket.priority === 'p1'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold">${ticket.priorityLabel || 'P1 - Crítica'}</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">${ticket.priorityLabel || 'P2 - Alta'}</span>`;
+
+    const statusBadge = ticket.status === 'Resuelto'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">Resuelto</span>`
+      : ticket.status === 'En Proceso'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">En Proceso</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30 font-semibold">Abierto</span>`;
+
+    tr.innerHTML = `
+      <td class="py-3 px-4 font-mono font-bold text-brand-cyan">${ticket.id}</td>
+      <td class="py-3 px-4">
+        <div class="font-semibold text-slate-200">${ticket.clientEmail}</div>
+        <div class="text-[10px] font-mono text-slate-400">${ticket.phone || '+57 Colombia'}</div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="font-semibold text-slate-200">${ticket.typeLabel}</div>
+        <div class="text-[10px] font-mono text-brand-electric">${ticket.hostname}</div>
+      </td>
+      <td class="py-3 px-4 text-slate-300">${ticket.location}</td>
+      <td class="py-3 px-4">${priorityBadge}</td>
+      <td class="py-3 px-4">${statusBadge}</td>
+      <td class="py-3 px-4 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button data-ticket-id="${ticket.id}" class="btn-edit-ticket btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar estado ticket">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+          <button data-ticket-id="${ticket.id}" class="btn-delete-ticket btn-pro p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all border border-rose-500/20" title="Eliminar ticket">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  const counterBadge = document.getElementById('ticketsCounterBadge');
+  if (counterBadge) counterBadge.textContent = `${visibleCount} ticket${visibleCount === 1 ? '' : 's'} activo${visibleCount === 1 ? '' : 's'}`;
 }
 
 /* ==========================================================================
-   9. MÓDULO DIRECTORIO CORPORATIVO DE CLIENTES
+   9. MÓDULO DIRECTORIO CORPORATIVO DE CLIENTES (clientes.html)
    ========================================================================== */
 function initClientesModule() {
-  const modalNewClient = document.getElementById('newClientModal');
-  const formNewClient = modalNewClient ? modalNewClient.querySelector('form') : null;
-  const tableBody = document.querySelector('#clientsTableContent tbody');
+  renderClientsTable();
 
+  // Registrar Cliente Form
+  const formNewClient = document.getElementById('formNewClient') || document.querySelector('#newClientModal form');
   if (formNewClient) {
     formNewClient.onsubmit = (e) => {
       e.preventDefault();
-      const nameInput = formNewClient.querySelector('input[placeholder*="Empresa"]') || formNewClient.querySelectorAll('input')[0];
-      const clientName = (nameInput && nameInput.value.trim()) || 'Empresa Colombia S.A.S.';
-      const nit = `NIT: 901.${Math.floor(Math.random() * 800 + 100)}.${Math.floor(Math.random() * 800 + 100)}-${Math.floor(Math.random() * 9)}`;
+      const name = document.getElementById('newClientName')?.value.trim() || 'Empresa Colombia S.A.S.';
+      const nit = document.getElementById('newClientNit')?.value.trim() || '901.890.123-4';
+      const contract = document.getElementById('newClientSla')?.value || 'Platinum SLA 99.98% (2h 24/7)';
+      const email = document.getElementById('newClientEmail')?.value.trim() || 'tecnologia@empresa.com.co';
+      const phone = document.getElementById('newClientPhone')?.value.trim() || '+57 315 892 4410';
+      const sedes = document.getElementById('newClientSede')?.value.trim() || 'Bogotá D.C. • Datacenter Corporativo';
+      const servers = document.getElementById('newClientServers')?.value.trim() || '16 Servidores Core';
 
-      if (tableBody) {
-        const newRow = document.createElement('tr');
-        newRow.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in slide-in-from-top-2';
-        newRow.innerHTML = `
-          <td class="py-3 px-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 text-brand-cyan flex items-center justify-center font-display font-bold text-xs">
-                ${clientName.slice(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <div class="font-semibold text-slate-200">${clientName}</div>
-                <div class="text-[10px] font-mono text-slate-400">${nit}</div>
-              </div>
-            </div>
-          </td>
-          <td class="py-3 px-4 text-slate-300">Bogotá D.C. • Sede Empresarial</td>
-          <td class="py-3 px-4 font-mono text-slate-300">8 Servidores Core</td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Platinum SLA 99.98%</span>
-          </td>
-          <td class="py-3 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
-          </td>
-          <td class="py-3 px-4 text-right">
-            <button class="btn-client-sla btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 text-[11px] font-semibold flex items-center gap-1" title="Ver Contrato y Sedes SLA">
-              <span class="material-symbols-outlined text-[14px]">contract</span>
-              <span>Ver SLA</span>
-            </button>
-          </td>
-        `;
-        tableBody.prepend(newRow);
-      }
+      Store.addClient({
+        name,
+        nit,
+        contract,
+        email,
+        phone,
+        sedes,
+        servers
+      });
 
+      renderClientsTable();
       formNewClient.reset();
-      modalNewClient.classList.add('hidden');
-      showToast(`Cliente corporativo [${clientName}] registrado con contrato Platinum SLA en Colombia.`, 'success', 'Cliente Agregado');
+      document.getElementById('newClientModal').classList.add('hidden');
+      showToast(`Cliente corporativo [${name}] registrado exitosamente con contrato SLA.`, 'success', 'Cliente Agregado');
     };
   }
 
-  // Delegación de botón "Ver SLA" en la tabla de clientes
+  // Editar Cliente Form
+  const formEditClient = document.getElementById('formEditClient');
+  if (formEditClient) {
+    formEditClient.onsubmit = (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editClientId').value;
+      const name = document.getElementById('editClientName').value.trim();
+      const contract = document.getElementById('editClientSla').value;
+      const sedes = document.getElementById('editClientSedes').value.trim();
+      const servers = document.getElementById('editClientServers').value.trim();
+      const status = document.getElementById('editClientStatus').value;
+      const phone = document.getElementById('editClientPhone').value.trim();
+
+      Store.updateClient(id, {
+        name,
+        contract,
+        sedes,
+        servers,
+        status,
+        phone
+      });
+
+      renderClientsTable();
+      document.getElementById('editClientModal').classList.add('hidden');
+      showToast(`Información corporativa de [${name}] actualizada.`, 'success', 'Cliente Actualizado');
+    };
+  }
+
+  // Delegación de clicks en la tabla de clientes
   document.addEventListener('click', (e) => {
+    // Ver SLA Modal
     const btnSla = e.target.closest('.btn-client-sla');
     if (btnSla) {
-      const row = btnSla.closest('tr');
-      const clientName = row ? row.querySelector('.font-semibold').textContent.trim() : 'Cliente';
-      showToast(`Contrato SLA Platinum para ${clientName}: Cobertura 24/7 en Colombia con tiempo de respuesta máximo de 2 horas.`, 'info', 'Certificación SLA');
+      e.preventDefault();
+      const clientId = btnSla.getAttribute('data-client-id');
+      const client = Store.getClients().find(c => c.id === clientId || c.nit === clientId);
+      if (client) {
+        document.getElementById('modalSlaClientName').textContent = client.name;
+        document.getElementById('modalSlaNit').textContent = `NIT: ${client.nit}`;
+        document.getElementById('modalSlaTier').textContent = client.contract;
+        document.getElementById('modalSlaSedes').textContent = client.sedes;
+        document.getElementById('modalSlaServers').textContent = client.servers;
+        document.getElementById('slaDetailModal').classList.remove('hidden');
+      }
+      return;
     }
+
+    // Editar Cliente
+    const btnEdit = e.target.closest('.btn-edit-client');
+    if (btnEdit) {
+      e.preventDefault();
+      const clientId = btnEdit.getAttribute('data-client-id');
+      const client = Store.getClients().find(c => c.id === clientId || c.nit === clientId);
+      if (client) {
+        document.getElementById('editClientId').value = client.id;
+        document.getElementById('editClientName').value = client.name;
+        document.getElementById('editClientNit').value = client.nit;
+        document.getElementById('editClientSla').value = client.contract;
+        document.getElementById('editClientSedes').value = client.sedes;
+        document.getElementById('editClientServers').value = client.servers;
+        document.getElementById('editClientStatus').value = client.status || 'Activo';
+        document.getElementById('editClientPhone').value = client.phone || '+57 (601) 745-0000';
+        document.getElementById('editClientModal').classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Eliminar Cliente
+    const btnDel = e.target.closest('.btn-delete-client');
+    if (btnDel) {
+      e.preventDefault();
+      const clientId = btnDel.getAttribute('data-client-id');
+      const client = Store.getClients().find(c => c.id === clientId || c.nit === clientId);
+      if (client && confirm(`¿Confirma que desea eliminar la cuenta corporativa de ${client.name}?`)) {
+        Store.deleteClient(client.id);
+        renderClientsTable();
+        showToast(`Cliente ${client.name} eliminado del directorio.`, 'info', 'Cliente Eliminado');
+      }
+    }
+  });
+}
+
+function renderClientsTable() {
+  const tableBody = document.querySelector('#clientsTableContent tbody');
+  if (!tableBody) return;
+
+  const clients = Store.getClients();
+  const searchInput = document.querySelector('input[placeholder*="Filtrar por empresa"]');
+  const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+  tableBody.innerHTML = '';
+
+  clients.forEach(client => {
+    if (query && !client.name.toLowerCase().includes(query) && !client.nit.toLowerCase().includes(query) && !client.sedes.toLowerCase().includes(query)) {
+      return;
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-800/40 transition-colors animate-in fade-in';
+
+    tr.innerHTML = `
+      <td class="py-3 px-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg ${client.colorClass || 'text-brand-cyan bg-sky-500/10 border-sky-500/20'} border flex items-center justify-center font-display font-bold text-xs shrink-0">
+            ${client.initials || 'CO'}
+          </div>
+          <div>
+            <div class="font-semibold text-slate-200">${client.name}</div>
+            <div class="text-[10px] font-mono text-slate-400">NIT: ${client.nit}</div>
+          </div>
+        </div>
+      </td>
+      <td class="py-3 px-4 text-slate-300">${client.sedes}</td>
+      <td class="py-3 px-4 font-mono text-slate-300">${client.servers}</td>
+      <td class="py-3 px-4">
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${client.contract}</span>
+      </td>
+      <td class="py-3 px-4">
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${client.status === 'Activo' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${client.status || 'Activo'}</span>
+      </td>
+      <td class="py-3 px-4 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button data-client-id="${client.id}" class="btn-client-sla btn-pro px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-brand-cyan border border-sky-500/30 text-[11px] font-semibold flex items-center gap-1" title="Ver Contrato y Sedes SLA">
+            <span class="material-symbols-outlined text-[14px]">contract</span>
+            <span>Ver SLA</span>
+          </button>
+          <button data-client-id="${client.id}" class="btn-edit-client btn-pro p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all" title="Editar cliente">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+          <button data-client-id="${client.id}" class="btn-delete-client btn-pro p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all border border-rose-500/20" title="Eliminar cliente">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
   });
 }
 
@@ -1175,89 +1673,35 @@ function initRealtimeFilters() {
   // Filtro de Órdenes
   const orderSearch = document.getElementById('ordersFilterSearch');
   const orderStatus = document.getElementById('ordersStatusSelect');
-  const ordersTableBody = document.querySelector('#ordersTableContent tbody');
-
-  if (orderSearch && ordersTableBody) {
-    orderSearch.addEventListener('input', applyOrdersFilter);
-  }
-  if (orderStatus && ordersTableBody) {
-    orderStatus.addEventListener('change', applyOrdersFilter);
-  }
-
-  function applyOrdersFilter() {
-    const query = (orderSearch ? orderSearch.value : '').toLowerCase().trim();
-    const statusVal = (orderStatus ? orderStatus.value : 'all').toLowerCase();
-    const rows = ordersTableBody.querySelectorAll('tr');
-
-    let visibleCount = 0;
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      const statusAttr = row.getAttribute('data-status') || '';
-      const matchesSearch = text.includes(query);
-      const matchesStatus = statusVal === 'all' || statusAttr.includes(statusVal);
-
-      if (matchesSearch && matchesStatus) {
-        row.style.display = '';
-        visibleCount++;
-      } else {
-        row.style.display = 'none';
-      }
-    });
-
-    const counter = document.getElementById('ordersCounterBadge');
-    if (counter) counter.textContent = `${visibleCount} orden${visibleCount === 1 ? '' : 'es'}`;
-  }
+  if (orderSearch) orderSearch.addEventListener('input', () => renderOrdersTable());
+  if (orderStatus) orderStatus.addEventListener('change', () => renderOrdersTable());
 
   // Filtro de Inventario
   const invSearch = document.querySelector('input[placeholder*="Filtrar por SKU"]');
   const invCategory = document.querySelector('select:has(option[value="storage"])');
-  const invTableBody = document.querySelector('#inventoryTableContent tbody');
-
-  if (invSearch && invTableBody) {
-    invSearch.addEventListener('input', applyInventoryFilter);
-  }
-  if (invCategory && invTableBody) {
-    invCategory.addEventListener('change', applyInventoryFilter);
-  }
-
-  function applyInventoryFilter() {
-    const query = (invSearch ? invSearch.value : '').toLowerCase().trim();
-    const catVal = (invCategory ? invCategory.value : 'all').toLowerCase();
-    const rows = invTableBody.querySelectorAll('tr');
-
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      const catAttr = row.getAttribute('data-category') || '';
-      const matchesSearch = text.includes(query);
-      const matchesCat = catVal === 'all' || catAttr.includes(catVal);
-
-      row.style.display = (matchesSearch && matchesCat) ? '' : 'none';
-    });
-  }
+  if (invSearch) invSearch.addEventListener('input', () => renderInventoryTable());
+  if (invCategory) invCategory.addEventListener('change', () => renderInventoryTable());
 
   // Filtro de Clientes
   const clientSearch = document.querySelector('input[placeholder*="Filtrar por empresa"]');
-  const clientTableBody = document.querySelector('#clientsTableContent tbody');
+  if (clientSearch) clientSearch.addEventListener('input', () => renderClientsTable());
 
-  if (clientSearch && clientTableBody) {
-    clientSearch.addEventListener('input', () => {
-      const query = clientSearch.value.toLowerCase().trim();
-      const rows = clientTableBody.querySelectorAll('tr');
-      rows.forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
-      });
-    });
-  }
+  // Filtro de Tickets
+  const ticketSearch = document.getElementById('ticketsFilterSearch');
+  const ticketStatus = document.getElementById('ticketsStatusSelect');
+  if (ticketSearch) ticketSearch.addEventListener('input', () => renderTicketsTable());
+  if (ticketStatus) ticketStatus.addEventListener('change', () => renderTicketsTable());
 }
 
 function initSkeletonSimulators() {
   const refreshBtns = [
-    { btn: 'btnRefreshOrders', skeleton: 'ordersSkeletonLoader', content: 'ordersTableContent' },
-    { btn: 'btnRefreshClients', skeleton: 'clientsSkeletonLoader', content: 'clientsTableContent' },
-    { btn: 'btnRefreshInventory', skeleton: 'inventorySkeletonLoader', content: 'inventoryTableContent' }
+    { btn: 'btnRefreshOrders', skeleton: 'ordersSkeletonLoader', content: 'ordersTableContent', fn: renderOrdersTable },
+    { btn: 'btnRefreshClients', skeleton: 'clientsSkeletonLoader', content: 'clientsTableContent', fn: renderClientsTable },
+    { btn: 'btnRefreshInventory', skeleton: 'inventorySkeletonLoader', content: 'inventoryTableContent', fn: renderInventoryTable },
+    { btn: 'btnRefreshTickets', skeleton: 'ticketsSkeletonLoader', content: 'ticketsTableContent', fn: renderTicketsTable }
   ];
 
-  refreshBtns.forEach(({ btn, skeleton, content }) => {
+  refreshBtns.forEach(({ btn, skeleton, content, fn }) => {
     const btnEl = document.getElementById(btn);
     const skEl = document.getElementById(skeleton);
     const ctEl = document.getElementById(content);
@@ -1267,6 +1711,7 @@ function initSkeletonSimulators() {
         ctEl.classList.add('hidden');
         skEl.classList.remove('hidden');
         setTimeout(() => {
+          if (fn) fn();
           skEl.classList.add('hidden');
           ctEl.classList.remove('hidden');
           showToast('Sincronización en vivo con Datacenter Colombia.', 'info', 'Actualizado');

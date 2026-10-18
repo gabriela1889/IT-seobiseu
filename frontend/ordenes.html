@@ -623,33 +623,54 @@
   <div id="editOrderModal" class="modal-container hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-[#1C2541] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <div class="p-5 bg-[#0B132B]/85 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="font-display font-bold text-sm text-white">Editar Estado de Órden</h3>
+        <h3 class="font-display font-bold text-sm text-white">Editar Órden de Trabajo</h3>
         <button data-modal-close class="btn-pro w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
           <span class="material-symbols-outlined text-[16px]">close</span>
         </button>
       </div>
 
-      <form data-validate="true" data-success-msg="Estado de la orden actualizado correctamente." class="p-5 space-y-3.5">
+      <form id="formEditOrder" class="p-5 space-y-3.5">
+        <input type="hidden" id="editOrderIdHidden" />
         <div>
-          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Reasignar Técnico</label>
-          <select class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
-            <option>Ing. Andrés Ruiz (Especialista RAID)</option>
-            <option>Ing. Sofía Reyes (Redes & Fibra)</option>
-            <option>Téc. Marco Silva (Hardware & GPU)</option>
-          </select>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Identificador de Órden</label>
+          <input id="editOrderDisplayId" readonly class="w-full bg-[#0B132B]/90 font-mono text-xs text-brand-cyan rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none font-bold" />
         </div>
 
         <div>
-          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Estado de la Órden</label>
-          <select class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
-            <option>En Diagnóstico / Triage</option>
-            <option>Pendiente / Crítico</option>
-            <option>Completado / Listo</option>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Reasignar Técnico Especialista</label>
+          <select id="editOrderTechSelect" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+            <option value="MS">Téc. Marco Silva (Hardware & Servidores - Tocancipá)</option>
+            <option value="AR">Ing. Andrés Ruiz (Especialista Storage & RAID - Zona Franca)</option>
+            <option value="SR">Ing. Sofía Reyes (Redes & Fibra Óptica - Chicó Calle 100)</option>
           </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Prioridad SLA</label>
+            <select id="editOrderPrioritySelect" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+              <option value="p1">P1 - Crítica (2 Horas)</option>
+              <option value="p2">P2 - Alta (6 Horas)</option>
+              <option value="p3">P3 - Media (12 Horas)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Estado de la Órden</label>
+            <select id="editOrderStatusSelect" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+              <option value="proceso">En Proceso / Diagnóstico</option>
+              <option value="pendiente">Pendiente / Crítico</option>
+              <option value="completado">Completado / SLA Cumplido</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Diagnóstico / Bitácora Técnica</label>
+          <textarea id="editOrderDiagInput" rows="2" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none"></textarea>
         </div>
 
         <div class="pt-2.5 border-t border-slate-800 flex items-center justify-end gap-2.5">
-          <button data-modal-close type="button" class="btn-pro px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs">Cancelar</button>
+          <button data-modal-close type="button" class="btn-pro px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
           <button type="submit" class="btn-primary-gradient px-4 py-2 rounded-xl text-xs font-bold">Guardar Cambios</button>
         </div>
       </form>
