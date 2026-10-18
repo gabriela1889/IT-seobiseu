@@ -11,7 +11,7 @@ const CREDENTIALS = {
   cliente: { email: 'cliente@it-seobiseu.local', pass: 'Cliente123!' },
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+function initLogin() {
   const form = document.querySelector('[data-auth-form]');
   const roleButtons = document.querySelectorAll('[data-role-demo]');
   const currentUser = AuthService.getCurrentUser();
@@ -80,7 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLogin);
+} else {
+  initLogin();
+}
 
 function showActiveSessionBanner(user) {
   const container = document.querySelector('.max-w-sm');

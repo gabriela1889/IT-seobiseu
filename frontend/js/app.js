@@ -39,7 +39,7 @@ const ROLE_PERMISSIONS = {
 
 let currentActiveDrawerOrderId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+function startApp() {
   const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const isLoginPage = currentPage === 'login.html';
 
@@ -94,7 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
   } else if (currentPage.includes('index') || currentPage === '') {
     initDashboardModule();
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
 
 /* ==========================================================================
    1. PERFIL DE USUARIO, MENÚ DESPLEGABLE Y CIERRE DE SESIÓN
@@ -394,6 +400,142 @@ function initNotifications() {
 /* ==========================================================================
    4. GESTIÓN UNIVERSAL DE MODALES Y DRAWERS
    ========================================================================== */
+export function openModal(targetId, triggerEl = null) {
+  const modal = typeof targetId === 'string' ? document.getElementById(targetId) : targetId;
+  if (!modal) {
+    console.warn(`[Modal] Modal no encontrado: ${targetId}`);
+    return;
+  }
+
+  // Quitar hidden, agregar is-open y forzar visibilidad inmediata
+  modal.classList.remove('hidden');
+  modal.classList.add('is-open');
+  modal.style.setProperty('display', 'flex', 'important');
+  modal.style.setProperty('pointer-events', 'auto', 'important');
+  modal.style.setProperty('visibility', 'visible', 'important');
+  modal.style.setProperty('opacity', '1', 'important');
+
+  // Pre-llenado reactivo de datos según el tipo de modal
+  const id = typeof targetId === 'string' ? targetId : modal.id;
+
+  if (id === 'editOrderModal') {
+    const orderId = triggerEl?.getAttribute('data-order-id') || modal.getAttribute('data-order-id') || 'OT-COL-8921';
+    if (typeof populateEditOrderModal === 'function') {
+      populateEditOrderModal(orderId);
+    }
+  } else if (id === 'editPartModal') {
+    const sku = triggerEl?.getAttribute('data-sku') || modal.getAttribute('data-sku');
+    if (sku) {
+      const item = Store.getInventory().find(i => i.sku === sku);
+      if (item) {
+        const adjustSku = document.getElementById('adjustPartSku');
+        const adjustDisplay = document.getElementById('adjustPartDisplay');
+        if (adjustSku) adjustSku.value = item.sku;
+        if (adjustDisplay) adjustDisplay.textContent = `${item.sku} — ${item.name} (Stock Actual: ${item.qty} u.)`;
+      }
+    }
+  } else if (id === 'editPartDetailsModal') {
+    const sku = triggerEl?.getAttribute('data-sku') || modal.getAttribute('data-sku');
+    if (sku) {
+      const item = Store.getInventory().find(i => i.sku === sku);
+      if (item) {
+        const idHidden = document.getElementById('editPartSkuHidden');
+        const skuDisplay = document.getElementById('editPartSkuDisplay');
+        const nameInput = document.getElementById('editPartNameInput');
+        const catSelect = document.getElementById('editPartCategorySelect');
+        const priceInput = document.getElementById('editPartPriceInput');
+        const rackInput = document.getElementById('editPartRackInput');
+        if (idHidden) idHidden.value = item.sku;
+        if (skuDisplay) skuDisplay.value = item.sku;
+        if (nameInput) nameInput.value = item.name;
+        if (catSelect) catSelect.value = item.category || 'storage';
+        if (priceInput) priceInput.value = item.priceFormatted || `${item.price} COP`;
+        if (rackInput) rackInput.value = item.rack;
+      }
+    }
+  } else if (id === 'editClientModal') {
+    const clientId = triggerEl?.getAttribute('data-client-id') || modal.getAttribute('data-client-id');
+    if (clientId) {
+      const client = Store.getClients().find(c => c.id === clientId || c.nit === clientId);
+      if (client) {
+        const idInput = document.getElementById('editClientId');
+        const nameInput = document.getElementById('editClientName');
+        const nitInput = document.getElementById('editClientNit');
+        const slaInput = document.getElementById('editClientSla');
+        const sedesInput = document.getElementById('editClientSedes');
+        const serversInput = document.getElementById('editClientServers');
+        const statusInput = document.getElementById('editClientStatus');
+        const phoneInput = document.getElementById('editClientPhone');
+        if (idInput) idInput.value = client.id;
+        if (nameInput) nameInput.value = client.name;
+        if (nitInput) nitInput.value = client.nit;
+        if (slaInput) slaInput.value = client.contract;
+        if (sedesInput) sedesInput.value = client.sedes;
+        if (serversInput) serversInput.value = client.servers;
+        if (statusInput) statusInput.value = client.status || 'Activo';
+        if (phoneInput) phoneInput.value = client.phone || '+57 (601) 745-0000';
+      }
+    }
+  } else if (id === 'slaDetailModal') {
+    const clientId = triggerEl?.getAttribute('data-client-id') || modal.getAttribute('data-client-id');
+    if (clientId) {
+      const client = Store.getClients().find(c => c.id === clientId || c.nit === clientId);
+      if (client) {
+        const slaName = document.getElementById('modalSlaClientName');
+        const slaNit = document.getElementById('modalSlaNit');
+        const slaTier = document.getElementById('modalSlaTier');
+        const slaSedes = document.getElementById('modalSlaSedes');
+        const slaServers = document.getElementById('modalSlaServers');
+        if (slaName) slaName.textContent = client.name;
+        if (slaNit) slaNit.textContent = `NIT: ${client.nit}`;
+        if (slaTier) slaTier.textContent = client.contract;
+        if (slaSedes) slaSedes.textContent = client.sedes;
+        if (slaServers) slaServers.textContent = client.servers;
+      }
+    }
+  } else if (id === 'editTicketModal') {
+    const ticketId = triggerEl?.getAttribute('data-ticket-id') || modal.getAttribute('data-ticket-id');
+    if (ticketId) {
+      const ticket = Store.getTickets().find(t => t.id === ticketId);
+      if (ticket) {
+        const idInput = document.getElementById('editTicketId');
+        const dispInput = document.getElementById('editTicketIdDisplay');
+        const statusSelect = document.getElementById('editTicketStatusSelect');
+        const prioSelect = document.getElementById('editTicketPrioritySelect');
+        const notesInput = document.getElementById('editTicketNotes');
+        if (idInput) idInput.value = ticket.id;
+        if (dispInput) dispInput.value = `${ticket.id} • ${ticket.clientEmail}`;
+        if (statusSelect) statusSelect.value = ticket.status || 'Abierto';
+        if (prioSelect) prioSelect.value = ticket.priority || 'p2';
+        if (notesInput) notesInput.value = ticket.diag || '';
+      }
+    }
+  }
+}
+
+export function closeModal(targetId) {
+  let modal = null;
+  if (typeof targetId === 'string') {
+    modal = document.getElementById(targetId);
+  } else if (targetId instanceof HTMLElement) {
+    modal = targetId.closest('.modal-container') || targetId;
+  }
+  if (!modal) {
+    document.querySelectorAll('.modal-container').forEach(m => {
+      m.classList.add('hidden');
+      m.classList.remove('is-open');
+      m.style.setProperty('display', 'none', 'important');
+    });
+    return;
+  }
+  modal.classList.add('hidden');
+  modal.classList.remove('is-open');
+  modal.style.setProperty('display', 'none', 'important');
+}
+
+window.openModal = openModal;
+window.closeModal = closeModal;
+
 function initUniversalModalsAndDrawers() {
   let overlay = document.getElementById('drawerBackdropOverlay');
   if (!overlay) {
@@ -403,36 +545,26 @@ function initUniversalModalsAndDrawers() {
     document.body.appendChild(overlay);
   }
 
-  // Delegación de click universal
+  // 1. Delegación de click universal en document
   document.addEventListener('click', (e) => {
-    // 1. Abrir Modal Genérico
+    // Abrir Modal
     const openTrigger = e.target.closest('[data-modal-target]');
     if (openTrigger) {
       e.preventDefault();
       const targetId = openTrigger.getAttribute('data-modal-target');
-      const targetModal = document.getElementById(targetId);
-      if (targetModal) {
-        targetModal.classList.remove('hidden');
-
-        // Si es editar orden, pre-llenar los campos
-        if (targetId === 'editOrderModal') {
-          const orderId = openTrigger.getAttribute('data-order-id');
-          populateEditOrderModal(orderId);
-        }
-      }
+      openModal(targetId, openTrigger);
       return;
     }
 
-    // 2. Cerrar Modal
+    // Cerrar Modal
     const closeTrigger = e.target.closest('[data-modal-close]');
     if (closeTrigger) {
       e.preventDefault();
-      const modal = closeTrigger.closest('.modal-container');
-      if (modal) modal.classList.add('hidden');
+      closeModal(closeTrigger);
       return;
     }
 
-    // 3. Abrir Drawer de Detalle de Orden
+    // Abrir Drawer de Detalle de Orden
     const drawerTrigger = e.target.closest('.btn-open-drawer');
     if (drawerTrigger) {
       e.preventDefault();
@@ -441,7 +573,7 @@ function initUniversalModalsAndDrawers() {
       return;
     }
 
-    // 4. Cerrar Drawer
+    // Cerrar Drawer
     const closeDrawerTrigger = e.target.closest('.btn-close-drawer');
     if (closeDrawerTrigger) {
       e.preventDefault();
@@ -449,21 +581,38 @@ function initUniversalModalsAndDrawers() {
       return;
     }
 
-    // 5. Click en Backdrop
+    // Click en Backdrop de Drawer
     if (e.target === overlay) {
       closeDrawer();
       return;
     }
 
-    if (e.target.classList.contains('modal-container')) {
-      e.target.classList.add('hidden');
+    // Click en Backdrop de Modal
+    if (e.target.classList && e.target.classList.contains('modal-container')) {
+      closeModal(e.target);
     }
+  });
+
+  // 2. Asignación directa a botones existentes por redundancia máxima
+  document.querySelectorAll('[data-modal-target]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = btn.getAttribute('data-modal-target');
+      openModal(targetId, btn);
+    });
+  });
+
+  document.querySelectorAll('[data-modal-close]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeModal(btn);
+    });
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeDrawer();
-      document.querySelectorAll('.modal-container:not(.hidden)').forEach(m => m.classList.add('hidden'));
+      closeModal();
     }
   });
 
@@ -1061,8 +1210,8 @@ function renderInventoryTable() {
   if (!tableBody) return;
 
   const items = Store.getInventory();
-  const searchInput = document.querySelector('input[placeholder*="Filtrar por SKU"]');
-  const catSelect = document.querySelector('select:has(option[value="storage"])');
+  const searchInput = document.getElementById('inventoryFilterSearch') || document.querySelector('input[placeholder*="Filtrar por SKU"]');
+  const catSelect = document.getElementById('inventoryCategoryFilter') || Array.from(document.querySelectorAll('select')).find(sel => Array.from(sel.options).some(opt => opt.value === 'storage'));
 
   const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
   const catFilter = (catSelect ? catSelect.value : 'all').toLowerCase();
@@ -1677,13 +1826,14 @@ function initRealtimeFilters() {
   if (orderStatus) orderStatus.addEventListener('change', () => renderOrdersTable());
 
   // Filtro de Inventario
-  const invSearch = document.querySelector('input[placeholder*="Filtrar por SKU"]');
-  const invCategory = document.querySelector('select:has(option[value="storage"])');
+  const invSearch = document.getElementById('inventoryFilterSearch') || document.querySelector('input[placeholder*="Filtrar por SKU"]');
+  const allSelects = Array.from(document.querySelectorAll('select'));
+  const invCategory = document.getElementById('inventoryCategoryFilter') || allSelects.find(sel => Array.from(sel.options).some(opt => opt.value === 'storage'));
   if (invSearch) invSearch.addEventListener('input', () => renderInventoryTable());
   if (invCategory) invCategory.addEventListener('change', () => renderInventoryTable());
 
   // Filtro de Clientes
-  const clientSearch = document.querySelector('input[placeholder*="Filtrar por empresa"]');
+  const clientSearch = document.getElementById('clientsFilterSearch') || document.querySelector('input[placeholder*="Filtrar por empresa"]');
   if (clientSearch) clientSearch.addEventListener('input', () => renderClientsTable());
 
   // Filtro de Tickets

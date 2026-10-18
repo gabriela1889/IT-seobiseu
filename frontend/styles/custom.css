@@ -21,6 +21,47 @@ a, a:hover, a:focus, a:active, a:visited {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Universal Modal & Drawer Hardening */
+.modal-container {
+  display: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.modal-container.is-open,
+.modal-container:not(.hidden) {
+  display: flex !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 9999 !important;
+}
+
+.modal-container.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+#drawerBackdropOverlay.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+#drawerBackdropOverlay:not(.hidden) {
+  display: block !important;
+  pointer-events: auto !important;
+  z-index: 40 !important;
+}
+
+#techDetailDrawer:not(.translate-x-full) {
+  pointer-events: auto !important;
+  z-index: 50 !important;
+}
+
 /* Base Body Hardening */
 body {
   margin: 0;
