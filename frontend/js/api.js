@@ -3,15 +3,14 @@
  * Base URL: http://localhost:8000/api/v1
  */
 
+// Paso 1: Definicion de URL base del backend y constantes de almacenamiento local
 const API_BASE_URL = (window.IT_SEOBISEU_API_URL || 'http://localhost:8000') + '/api/v1';
 
-// Token Management Keys
+// Claves para el token de sesion y datos de usuario en localStorage
 const TOKEN_KEY = 'it_seobiseu_token';
 const USER_KEY = 'it_seobiseu_user';
 
-/**
- * Helper to get authentication headers
- */
+// Paso 2: Constructor de cabeceras HTTP con inyeccion de token Bearer JWT
 function getHeaders(isJson = true) {
   const headers = {};
   if (isJson) {
@@ -24,9 +23,7 @@ function getHeaders(isJson = true) {
   return headers;
 }
 
-/**
- * Generic request handler with error interception and JSON parsing
- */
+// Paso 3: Despachador generico de peticiones Fetch con interceptor de errores HTTP
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const defaultHeaders = getHeaders(options.body && !(options.body instanceof FormData));
@@ -42,12 +39,11 @@ async function request(endpoint, options = {}) {
   try {
     const response = await fetch(url, config);
 
-    // If unauthorized or token expired
+    // Deteccion de no autorizado (401) para limpiar credenciales
     if (response.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
-      // Optional redirection or event dispatch
-      console.warn('[IT seobiseu API] Sesión expirada o no autorizada (401).');
+      console.warn('[IT seobiseu API] Sesion expirada o no autorizada (401).');
     }
 
     if (!response.ok) {
@@ -56,7 +52,6 @@ async function request(endpoint, options = {}) {
       throw new Error(errorMessage);
     }
 
-    // Handle 204 No Content
     if (response.status === 204) {
       return true;
     }
@@ -68,6 +63,7 @@ async function request(endpoint, options = {}) {
   }
 }
 
+// Paso 4: Diccionario de cuentas de respaldo para ejecucion en GitHub Pages
 export const DEMO_ACCOUNTS = {
   'admin@it-seobiseu.local': {
     password: 'Admin123!',
@@ -87,6 +83,7 @@ export const DEMO_ACCOUNTS = {
   }
 };
 
+// Paso 5: Servicio de Autenticacion y control de sesion activa
 /* ==========================================================================
    1. AUTHENTICATION SERVICE
    ========================================================================== */

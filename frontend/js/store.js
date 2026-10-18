@@ -248,11 +248,13 @@ const SEED_DATA = {
   ]
 };
 
+// Paso 3: Definicion de la clase gestora del almacenamiento local (Patron Repository)
 class DataStore {
   constructor() {
     this.initStore();
   }
 
+  // Paso 4: Inicializacion automatica del dataset por defecto si no existen datos previos
   initStore() {
     if (!localStorage.getItem(STORAGE_KEYS.ORDERS)) {
       localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(SEED_DATA.orders));
@@ -268,6 +270,7 @@ class DataStore {
     }
   }
 
+  // Paso 5: Operaciones CRUD para la entidad de Ordenes de Trabajo
   /* ------------------ ORDERS CRUD ------------------ */
   getOrders() {
     try {
@@ -326,6 +329,7 @@ class DataStore {
     return true;
   }
 
+  // Paso 6: Operaciones CRUD para la entidad de Inventario de Repuestos
   /* ------------------ INVENTORY CRUD ------------------ */
   getInventory() {
     try {
@@ -404,6 +408,7 @@ class DataStore {
     return true;
   }
 
+  // Paso 7: Operaciones CRUD para el Directorio Corporativo de Clientes y Sedes
   /* ------------------ CLIENTS CRUD ------------------ */
   getClients() {
     try {
@@ -459,6 +464,7 @@ class DataStore {
     return true;
   }
 
+  // Paso 8: Operaciones CRUD para el modulo de Tickets y Solicitudes Tecnicas
   /* ------------------ TICKETS CRUD ------------------ */
   getTickets() {
     try {
@@ -513,5 +519,6 @@ class DataStore {
   }
 }
 
+// Paso 9: Exportacion de la instancia unica (Singleton Pattern)
 export const Store = new DataStore();
 
