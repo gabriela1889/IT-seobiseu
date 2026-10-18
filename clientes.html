@@ -360,29 +360,29 @@
   <div id="newClientModal" class="modal-container hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-lg bg-[#1C2541] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <div class="p-5 bg-[#0B132B]/85 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="font-display font-bold text-sm text-white">Registrar Nuevo Cliente Corporativo</h3>
+        <h3 class="font-display font-bold text-sm text-white">Registrar Nuevo Cliente Corporativo (Colombia)</h3>
         <button data-modal-close class="btn-pro w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
           <span class="material-symbols-outlined text-[16px]">close</span>
         </button>
       </div>
 
-      <form data-validate="true" data-success-msg="Cliente corporativo registrado y contrato SLA asociado con éxito." class="p-5 space-y-3.5">
+      <form id="formNewClient" data-validate="true" data-success-msg="Cliente corporativo registrado y contrato SLA asociado con éxito." class="p-5 space-y-3.5">
         <div>
           <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Razón Social *</label>
-          <input required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Ej: Corporación Minera del Sur S.A." type="text"/>
+          <input id="newClientName" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Ej: Cementos Argos S.A. / ISA Interconexión" type="text"/>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">RUC / NIT *</label>
-            <input required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none font-mono" placeholder="20608912341" type="text"/>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">NIT Colombia *</label>
+            <input id="newClientNit" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none font-mono" placeholder="901.458.920-3" type="text"/>
           </div>
           <div>
             <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Contrato SLA *</label>
-            <select required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
-              <option value="tier4">Tier 4 (2h 24/7)</option>
-              <option value="tier3">Tier 3 (4h)</option>
-              <option value="standard">Standard (8h)</option>
+            <select id="newClientSla" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+              <option value="Platinum SLA 99.98% (2h 24/7)">Platinum SLA 99.98% (2h 24/7)</option>
+              <option value="Gold SLA 99.9% (4h)">Gold SLA 99.9% (4h)</option>
+              <option value="Silver SLA 99.5% (8h)">Silver SLA 99.5% (8h)</option>
             </select>
           </div>
         </div>
@@ -390,17 +390,23 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Correo IT *</label>
-            <input required type="email" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="contacto@minera.com"/>
+            <input id="newClientEmail" required type="email" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="tecnologia@cliente.com.co"/>
           </div>
           <div>
-            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Teléfono NOC *</label>
-            <input required type="tel" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="+51 988 123 456"/>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Teléfono NOC Colombia *</label>
+            <input id="newClientPhone" required type="tel" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="+57 315 892 4410"/>
           </div>
         </div>
 
-        <div>
-          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Dirección Sede / Datacenter *</label>
-          <input required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Av. Central 1240, Datacenter Piso 4" type="text"/>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Dirección Sede / Datacenter *</label>
+            <input id="newClientSede" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Ej: Bogotá D.C. • Datacenter Zona Franca" type="text"/>
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Equipos Instalados *</label>
+            <input id="newClientServers" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" placeholder="Ej: 16 Servidores Core & Racks" type="text"/>
+          </div>
         </div>
 
         <div class="pt-2.5 border-t border-slate-800 flex items-center justify-end gap-2.5">
@@ -408,6 +414,122 @@
           <button type="submit" class="btn-primary-gradient px-5 py-2 rounded-xl font-display text-xs font-bold">Crear Cuenta</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR CLIENTE -->
+  <div id="editClientModal" class="modal-container hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-[#1C2541] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 bg-[#0B132B]/85 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-display font-bold text-sm text-white">Editar Cuenta Corporativa</h3>
+        <button data-modal-close class="btn-pro w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+
+      <form id="formEditClient" class="p-5 space-y-3.5">
+        <input type="hidden" id="editClientId" />
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Razón Social *</label>
+          <input id="editClientName" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">NIT Colombia</label>
+            <input id="editClientNit" readonly class="w-full bg-[#0B132B]/90 font-mono text-xs text-brand-cyan rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none font-bold" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Contrato SLA *</label>
+            <select id="editClientSla" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+              <option value="Platinum SLA 99.98% (2h 24/7)">Platinum SLA 99.98% (2h 24/7)</option>
+              <option value="Gold SLA 99.9% (4h)">Gold SLA 99.9% (4h)</option>
+              <option value="Silver SLA 99.5% (8h)">Silver SLA 99.5% (8h)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Sedes & Datacenters *</label>
+            <input id="editClientSedes" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Equipos Instalados *</label>
+            <input id="editClientServers" required class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Estado de Cuenta</label>
+            <select id="editClientStatus" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none">
+              <option value="Activo">Activo (Contrato Vigente)</option>
+              <option value="En Mantenimiento">En Mantenimiento</option>
+              <option value="Suspendido">Suspendido</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono text-slate-400 mb-1 uppercase font-semibold">Teléfono NOC</label>
+            <input id="editClientPhone" class="w-full bg-[#0B132B]/90 font-sans text-xs text-slate-200 rounded-xl px-3.5 py-2.5 border border-slate-800 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t border-slate-800 flex items-center justify-end gap-2.5">
+          <button data-modal-close type="button" class="btn-pro px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
+          <button type="submit" class="btn-primary-gradient px-4 py-2 rounded-xl text-xs font-bold">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE DE CONTRATO SLA -->
+  <div id="slaDetailModal" class="modal-container hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-[#1C2541] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 bg-[#0B132B]/85 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-brand-cyan text-[20px]">verified</span>
+          <h3 class="font-display font-bold text-sm text-white">Certificación de Contrato SLA Colombia</h3>
+        </div>
+        <button data-modal-close class="btn-pro w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+      <div class="p-5 space-y-4 text-xs">
+        <div>
+          <span class="font-display font-bold text-sm text-white" id="modalSlaClientName">Bancolombia S.A.</span>
+          <div class="text-[11px] font-mono text-brand-cyan mt-0.5" id="modalSlaNit">NIT: 890.903.938-8</div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] text-emerald-400 font-bold uppercase">Nivel de Servicio</span>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-bold" id="modalSlaTier">Platinum 99.98%</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            Cobertura 24 horas al día, 7 días a la semana con tiempo máximo de respuesta en sitio de 2 horas en datacenters de Bogotá, Tocancipá y Medellín.
+          </p>
+        </div>
+
+        <div class="space-y-2 text-[11px] text-slate-300">
+          <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+            <span class="text-slate-400 font-mono">Sedes Vinculadas:</span>
+            <span class="font-semibold text-white" id="modalSlaSedes">Datacenter Tocancipá</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+            <span class="text-slate-400 font-mono">Infraestructura:</span>
+            <span class="font-semibold text-white" id="modalSlaServers">24 Servidores Core</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400 font-mono">Estado Actual:</span>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold">Activo & Certificado</span>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex justify-end">
+          <button data-modal-close type="button" class="btn-primary-gradient px-4 py-2 rounded-xl text-xs font-bold">Entendido</button>
+        </div>
+      </div>
     </div>
   </div>
 
