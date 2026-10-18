@@ -8,7 +8,8 @@ import { AuthService, DEMO_ACCOUNTS } from './api.js';
 import { Store } from './store.js';
 
 /* ==========================================================================
-   0. CONFIGURACIÓN Y CONTROL DE ACCESO POR ROL
+   0. CONFIGURACION Y CONTROL DE ACCESO POR ROL (RBAC)
+   Paso 1: Matriz de permisos por perfil y ciclo de vida de la aplicacion
    ========================================================================== */
 const ROLE_PERMISSIONS = {
   ADMINISTRADOR: {
@@ -39,24 +40,25 @@ const ROLE_PERMISSIONS = {
 
 let currentActiveDrawerOrderId = null;
 
+// Paso 2: Funcion principal de arranque (Punto de entrada de la aplicacion)
 function startApp() {
   const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const isLoginPage = currentPage === 'login.html';
 
-  // 1. Guard de Autenticación
+  // Paso 2.1: Guard de autenticacion (Verifica sesion activa en LocalStorage)
   if (!isLoginPage) {
     if (!AuthService.isAuthenticated() || !AuthService.getCurrentUser()) {
       window.location.href = 'login.html';
       return;
     }
 
-    // 2. Control de Acceso por Rol (Redirección si no tiene permiso para la página)
+    // Paso 2.2: Control de acceso por rol (Redireccion preventiva si no tiene permiso)
     const currentUser = AuthService.getCurrentUser();
     const userRole = (currentUser.rol || 'ADMINISTRADOR').toUpperCase();
     const permissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.ADMINISTRADOR;
 
     if (!permissions.allowedPages.includes(currentPage)) {
-      showToast(`El perfil [${currentUser.rol}] no tiene acceso al módulo solicitado. Redirigiendo...`, 'error', 'Acceso Restringido');
+      showToast(`El perfil [${currentUser.rol}] no tiene acceso al modulo solicitado. Redirigiendo...`, 'error', 'Acceso Restringido');
       setTimeout(() => {
         window.location.href = userRole === 'CLIENTE' ? 'tickets.html' : 'ordenes.html';
       }, 700);
@@ -64,7 +66,7 @@ function startApp() {
     }
   }
 
-  // 3. Inicializar Componentes Globales
+  // Paso 2.3: Inicializacion de componentes y utilidades transversales
   initTheme();
   initCurrentNavigation();
   initSidebar();
@@ -76,13 +78,13 @@ function startApp() {
   initSkeletonSimulators();
   initQuickStats();
 
-  // 4. Adaptar Menú Lateral y Perfil según el Rol
+  // Paso 2.4: Adaptacion visual del sidebar y header segun el rol del usuario
   if (!isLoginPage) {
     initUserHeaderAndDropdown();
     adaptSidebarAndModulesByRole();
   }
 
-  // 5. Inicializar Controladores de Página Específica con Renderizado Reactivo
+  // Paso 2.5: Enrutamiento e inicializacion reactiva del controlador de la pagina activa
   if (currentPage.includes('inventario')) {
     initInventarioModule();
   } else if (currentPage.includes('ordenes')) {
@@ -183,17 +185,17 @@ function initUserHeaderAndDropdown() {
           <span class="text-[9px] font-mono text-brand-cyan">1-Click</span>
         </div>
         <div class="grid grid-cols-2 gap-1.5">
-          <button type="button" data-switch-role="admin" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1">
-            <span>👑</span> <span>Admin</span>
+          <button type="button" data-switch-role="admin" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[13px] text-brand-cyan">admin_panel_settings</span> <span>Admin</span>
           </button>
-          <button type="button" data-switch-role="supervisor" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1">
-            <span>🛡️</span> <span>Supervisor</span>
+          <button type="button" data-switch-role="supervisor" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[13px] text-amber-400">shield</span> <span>Supervisor</span>
           </button>
-          <button type="button" data-switch-role="tecnico" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1">
-            <span>🔧</span> <span>Técnico</span>
+          <button type="button" data-switch-role="tecnico" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[13px] text-emerald-400">build</span> <span>Técnico</span>
           </button>
-          <button type="button" data-switch-role="cliente" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1">
-            <span>👤</span> <span>Cliente</span>
+          <button type="button" data-switch-role="cliente" class="btn-switch-role text-left p-1.5 rounded-lg bg-slate-800/70 hover:bg-sky-500/20 border border-slate-700/50 hover:border-brand-cyan/50 text-[11px] text-slate-200 transition-all flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[13px] text-purple-400">person</span> <span>Cliente</span>
           </button>
         </div>
       </div>
