@@ -230,9 +230,9 @@
         <div class="flex-1 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
           <div class="relative flex-1">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-            <input class="w-full bg-[#0B132B]/85 font-sans text-xs text-slate-200 placeholder:text-slate-400 rounded-xl pl-9 pr-4 py-2 border border-slate-800 focus:border-brand-cyan/60 focus:outline-none" placeholder="Filtrar por SKU, nombre del repuesto, modelo compatible..." type="text"/>
+            <input id="inventoryFilterSearch" class="w-full bg-[#0B132B]/85 font-sans text-xs text-slate-200 placeholder:text-slate-400 rounded-xl pl-9 pr-4 py-2 border border-slate-800 focus:border-brand-cyan/60 focus:outline-none" placeholder="Filtrar por SKU, nombre del repuesto, modelo compatible..." type="text"/>
           </div>
-          <select class="bg-[#0B132B]/85 font-sans text-xs text-slate-200 rounded-xl px-3 py-2 border border-slate-800 focus:border-brand-cyan/60 focus:outline-none cursor-pointer">
+          <select id="inventoryCategoryFilter" class="bg-[#0B132B]/85 font-sans text-xs text-slate-200 rounded-xl px-3 py-2 border border-slate-800 focus:border-brand-cyan/60 focus:outline-none cursor-pointer">
             <option value="all">Todas las Categorías</option>
             <option value="storage">Discos & Almacenamiento</option>
             <option value="power">Fuentes de Poder (PSU)</option>
@@ -245,7 +245,7 @@
           <button id="btnRefreshInventory" class="btn-pro p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition-all" title="Recargar inventario (Simular skeleton)">
             <span class="material-symbols-outlined text-[16px]">refresh</span>
           </button>
-          <button data-modal-target="newPartModal" class="btn-primary-gradient flex items-center gap-1.5 px-4 py-2 rounded-xl font-display text-xs font-bold shadow-lg shadow-sky-500/25 transition-all">
+          <button data-modal-target="newPartModal" onclick="openModal('newPartModal')" class="btn-primary-gradient flex items-center gap-1.5 px-4 py-2 rounded-xl font-display text-xs font-bold shadow-lg shadow-sky-500/25 transition-all" type="button">
             <span class="material-symbols-outlined text-[16px]">add_circle</span>
             <span>+ Registrar Repuesto</span>
           </button>
